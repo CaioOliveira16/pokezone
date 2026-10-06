@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poke Zone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gba-bg: #e8f0f8;
+      --gba-border: #2c3e50;
+      --pkmn-red: #e3350d;
+      --pkmn-blue: #3164b3;
+    }
+
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background-color: var(--gba-bg);
+      /* Subtle grid background typical of retro menus */
+      background-image: linear-gradient(#d0d8e0 1px, transparent 1px), linear-gradient(90deg, #d0d8e0 1px, transparent 1px);
+      background-size: 20px 20px;
+      min-height: 100vh;
+      color: #111;
+    }
+    
+    .font-vt {
+      font-family: 'VT323', monospace;
+      font-size: 1.25rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* Classic Pokémon Dialogue Box */
+    .dialogue-box {
+      background-color: white;
+      border: 6px solid var(--gba-border);
+      border-radius: 12px;
+      box-shadow: inset 0 0 0 4px #f8f8f8, 4px 4px 0px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .dialogue-box::before {
+      content: '';
+      position: absolute;
+      top: 4px; left: 4px; right: 4px; bottom: 4px;
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* Retro Button */
+    .btn-retro {
+      background-color: white;
+      border: 4px solid var(--gba-border);
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+      text-transform: uppercase;
+      transition: all 0.1s;
+    }
+    .btn-retro:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px rgba(0,0,0,0.3);
+    }
+    .btn-retro.active-tab {
+      background-color: var(--pkmn-red);
+      color: white;
+    }
+
+    /* Type Badge colors - Solid classic colors */
+    .type-fire { background-color: #F08030; color: white; }
+    .type-water { background-color: #6890F0; color: white; }
+    .type-grass { background-color: #78C850; color: white; }
+    .type-electric { background-color: #F8D030; color: black; }
+    .type-ice { background-color: #98D8D8; color: black; }
+    .type-fighting { background-color: #C03028; color: white; }
+    .type-poison { background-color: #A040A0; color: white; }
+    .type-ground { background-color: #E0C068; color: black; }
+    .type-flying { background-color: #A890F0; color: white; }
+    .type-psychic { background-color: #F85888; color: white; }
+    .type-bug { background-color: #A8B820; color: white; }
+    .type-rock { background-color: #B8A038; color: white; }
+    .type-ghost { background-color: #705898; color: white; }
+    .type-dragon { background-color: #7038F8; color: white; }
+    .type-steel { background-color: #B8B8D0; color: black; }
+    .type-fairy { background-color: #EE99AC; color: black; }
+    .type-normal { background-color: #A8A878; color: black; }
+    .type-dark { background-color: #705848; color: white; }
+
+    /* Custom Animations */
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .animate-blink { animation: blink 1s infinite; }
+    
+    @keyframes pop {
+      0% { transform: scale(0.95); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop { animation: pop 0.2s steps(2, end) forwards; }
+    
+    .pixel-shadow { filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2)); }
+    
+    input::placeholder { color: #9ca3af; font-family: 'VT323', monospace; font-size: 1.1rem; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen overflow-x-hidden">
+
+  <header class="bg-red-600 border-b-8 border-red-800 sticky top-0 z-40 shadow-[0_4px_0_rgba(0,0,0,0.2)]">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3">
+        <div class="w-12 h-12 bg-white rounded-full border-4 border-black relative overflow-hidden flex items-center justify-center">
+          <div class="absolute top-0 w-full h-1/2 bg-red-500"></div>
+          <div class="absolute w-full h-1 bg-black"></div>
+          <div class="absolute w-4 h-4 bg-white border-2 border-black rounded-full z-10"></div>
+        </div>
+        <div class="text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)]">
+          <h1 class="text-xl tracking-widest uppercase">Poke Zone</h1>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-2 overflow-x-auto max-w-full pb-2 md:pb-0 scrollbar-hide">
+        <button id="tab-wordle" onclick="switchGame('wordle')" class="btn-retro active-tab px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap">
+          Wordle
+        </button>
+        <button id="tab-pokedex" onclick="switchGame('pokedex')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          Pokédex
+        </button>
+        <button id="tab-tcg" onclick="switchGame('tcg')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          TCG
+        </button>
+        <button id="tab-enigma" onclick="switchGame('enigma')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          Enigma
+        </button>
+      </nav>
+
+      <!-- Global Sound Toggle -->
+      <button id="sound-btn" onclick="toggleSound()" class="btn-retro p-2 text-slate-700">
+        <svg id="sound-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+          <path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/>
+        </svg>
+      </button>
+
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8 flex flex-col items-center">
+
+    <section id="game-wordle" class="w-full flex flex-col items-center animate-pop">
+      
+      <div class="dialogue-box w-full max-w-2xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="font-vt text-lg text-slate-800 leading-tight">
+          <span class="text-red-600 font-bold">INFO:</span> Adivinhe o Pokémon usando atributos como Tipo, Geração, e Peso.
+        </p>
+        <div class="text-[10px] text-right space-y-2 border-l-4 border-slate-300 pl-4">
+          <div>Tentativas:<br><span id="wordle-attempts" class="text-blue-700">0/7</span></div>
+          <div>Vitórias:<br><span id="wordle-wins" class="text-green-700">0</span></div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="relative w-full max-w-xl mb-8 flex gap-2">
+        <input 
+          type="text" 
+          id="wordle-input" 
+          autocomplete="off"
+          placeholder="NOME DO POKEMON..." 
+          class="flex-grow px-4 py-3 border-4 border-slate-800 font-vt text-xl uppercase outline-none focus:bg-yellow-50 shadow-[4px_4px_0_rgba(0,0,0,0.2)]"
+        />
+        <button 
+          onclick="submitWordleGuess()" 
+          class="btn-retro bg-blue-600 text-white px-6 py-3 border-blue-900 text-xs"
+        >
+          OK
+        </button>
+      </div>
+
+      <!-- Comparison Header -->
+      <div class="w-full overflow-x-auto pb-4">
+        <div class="min-w-[650px] grid grid-cols-6 gap-2 mb-2 px-2 text-center text-[10px] text-slate-600 uppercase border-b-4 border-slate-400 pb-2">
+          <div>Pokémon</div>
+          <div>Tipo 1</div>
+          <div>Tipo 2</div>
+          <div>Geração</div>
+          <div>Pokédex</div>
+          <div>Tam/Peso</div>
+        </div>
+
+        <!-- Guesses Container -->
+        <div id="wordle-guesses-container" class="min-w-[650px] flex flex-col space-y-2"></div>
+      </div>
+    </section>
+
+    <section id="game-pokedex" class="w-full max-w-3xl flex flex-col items-center hidden animate-pop">
+      
+      <div class="dialogue-box w-full p-4 mb-6 text-center">
+        <h2 class="text-sm md:text-base text-red-600 mb-2">Maior ou Menor?</h2>
+        <p class="font-vt text-lg md:text-xl">O POKÉMON #2 tem um número na Pokédex MAIOR ou MENOR que o #1?</p>
+      </div>
+
+      <div class="mb-6 px-4 py-2 border-4 border-slate-800 bg-yellow-100 text-[10px] flex gap-2 items-center shadow-[4px_4px_0_rgba(0,0,0,0.2)]">
+        <span>STREAK:</span>
+        <span id="pokedex-streak" class="text-sm text-red-600">0</span>
+      </div>
+
+      <!-- Cards Comparison Container -->
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        
+        <!-- Pokemon 1 (Known) -->
+        <div class="dialogue-box p-4 flex flex-col items-center text-center">
+          <span class="bg-black text-white px-2 py-1 text-[8px] mb-2">POKÉMON #1</span>
+          <img id="pokedex-p1-img" src="" alt="Pokemon 1" class="w-32 h-32 object-contain my-2 pixel-shadow rendering-pixelated">
+          <h3 id="pokedex-p1-name" class="text-xs uppercase mt-2">--</h3>
+          <div class="mt-4 border-4 border-slate-800 bg-slate-100 px-4 py-2 text-sm w-full">
+            No. <span id="pokedex-p1-num" class="text-blue-600">---</span>
+          </div>
+        </div>
+
+        <!-- VS Badge for mobile -->
+        <div class="md:hidden text-center -my-4 z-10">
+          <span class="bg-red-600 text-white px-3 py-2 border-4 border-slate-800 text-xs">VS</span>
+        </div>
+
+        <!-- Pokemon 2 (Guess Target) -->
+        <div class="dialogue-box p-4 flex flex-col items-center text-center bg-blue-50">
+          <span class="bg-blue-600 text-white px-2 py-1 text-[8px] mb-2">POKÉMON #2</span>
+          <img id="pokedex-p2-img" src="" alt="Pokemon 2" class="w-32 h-32 object-contain my-2 pixel-shadow filter brightness-0 opacity-80" style="transition: filter 0.3s">
+          <h3 id="pokedex-p2-name" class="text-xs uppercase mt-2">?????</h3>
+          
+          <div class="mt-4 border-4 border-slate-800 bg-slate-100 px-4 py-2 text-sm w-full">
+            No. <span id="pokedex-p2-num" class="text-red-600 animate-blink">???</span>
+          </div>
+
+          <div id="pokedex-btns" class="grid grid-cols-2 gap-2 w-full mt-4">
+            <button onclick="guessPokedex('higher')" class="btn-retro bg-green-500 border-green-800 py-3 text-[10px] text-white">MAIOR</button>
+            <button onclick="guessPokedex('lower')" class="btn-retro bg-red-500 border-red-800 py-3 text-[10px] text-white">MENOR</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="game-tcg" class="w-full max-w-3xl flex flex-col items-center hidden animate-pop">
+      
+      <div class="dialogue-box w-full p-4 mb-6 text-center">
+        <h2 class="text-sm md:text-base text-blue-700 mb-2">Batalha de Cartas</h2>
+        <p class="font-vt text-lg md:text-xl">A Carta #2 vale MAIS ou MENOS dinheiro que a Carta #1?</p>
+      </div>
+
+      <div class="mb-6 px-4 py-2 border-4 border-slate-800 bg-green-100 text-[10px] flex gap-2 items-center shadow-[4px_4px_0_rgba(0,0,0,0.2)]">
+        <span>VITÓRIAS:</span>
+        <span id="tcg-streak" class="text-sm text-green-700">0</span>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="w-full flex flex-col md:flex-row justify-center gap-8 items-center">
+        
+        <!-- Card 1 -->
+        <div class="bg-yellow-400 p-2 border-[6px] border-slate-800 shadow-[8px_8px_0_rgba(0,0,0,0.3)] w-56 flex flex-col items-center">
+          <div class="bg-white w-full border-2 border-black p-1 text-[8px] text-right font-bold mb-1">CARTA 1</div>
+          <div class="w-full h-48 bg-slate-200 border-4 border-black overflow-hidden flex items-center justify-center p-2 bg-gradient-to-br from-slate-100 to-slate-400">
+            <img id="tcg-c1-img" src="" alt="Card 1" class="max-h-full object-contain filter drop-shadow">
+          </div>
+          <div class="bg-white border-4 border-slate-800 w-full p-2 mt-2 text-center">
+            <h3 id="tcg-c1-name" class="text-[10px] uppercase truncate mb-1">--</h3>
+            <p class="text-sm text-green-600">$<span id="tcg-c1-price">0.00</span></p>
+          </div>
+        </div>
+
+        <div class="text-xl font-bold md:-mx-4 z-10 text-slate-500">VS</div>
+
+        <!-- Card 2 -->
+        <div class="bg-blue-400 p-2 border-[6px] border-slate-800 shadow-[8px_8px_0_rgba(0,0,0,0.3)] w-56 flex flex-col items-center">
+          <div class="bg-white w-full border-2 border-black p-1 text-[8px] text-right font-bold mb-1">CARTA 2</div>
+          <div class="w-full h-48 bg-slate-200 border-4 border-black overflow-hidden flex items-center justify-center p-2 bg-gradient-to-br from-slate-100 to-slate-400">
+            <img id="tcg-c2-img" src="" alt="Card 2" class="max-h-full object-contain filter brightness-0 opacity-50" style="transition: filter 0.3s">
+          </div>
+          <div class="bg-white border-4 border-slate-800 w-full p-2 mt-2 text-center">
+            <h3 id="tcg-c2-name" class="text-[10px] uppercase truncate mb-1">?????</h3>
+            <p id="tcg-c2-price-box" class="text-sm text-red-600 animate-blink">$<span id="tcg-c2-price">???</span></p>
+          </div>
+          <div id="tcg-btns" class="w-full mt-2 space-y-1">
+            <button onclick="guessTCG('higher')" class="btn-retro w-full bg-green-500 py-1.5 text-[8px] text-white">VALE MAIS</button>
+            <button onclick="guessTCG('lower')" class="btn-retro w-full bg-red-500 py-1.5 text-[8px] text-white">VALE MENOS</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="game-enigma" class="w-full max-w-2xl flex flex-col items-center hidden animate-pop">
+      
+      <!-- Riddle Container Box -->
+      <div class="dialogue-box w-full p-6 sm:p-8 mb-6 relative">
+        <div class="absolute -top-3 left-4 bg-white border-4 border-slate-800 px-3 py-1 text-[10px]">
+          CHARADA
+        </div>
+
+        <p class="font-vt text-xl md:text-2xl text-slate-800 leading-relaxed mb-6 mt-2">
+          "<span id="enigma-text">Carregando enigma...</span>"
+        </p>
+
+        <!-- Clues List -->
+        <div class="space-y-3 font-vt text-lg text-slate-600 border-t-2 border-dashed border-slate-300 pt-4">
+          <div><span class="text-red-600 font-bold">Dica 1:</span> <span id="enigma-clue-1">--</span></div>
+          <div><span class="text-blue-600 font-bold">Dica 2:</span> <span id="enigma-clue-2">--</span></div>
+        </div>
+      </div>
+
+      <!-- Guess Input -->
+      <div class="relative w-full max-w-md flex flex-col gap-3">
+        <input 
+          type="text" 
+          id="enigma-input" 
+          autocomplete="off"
+          placeholder="QUEM É ESTE POKÉMON?" 
+          class="w-full px-4 py-3 border-4 border-slate-800 font-vt text-xl text-center uppercase outline-none focus:bg-yellow-50 shadow-[4px_4px_0_rgba(0,0,0,0.2)]"
+        />
+        <div class="flex gap-2">
+          <button onclick="submitEnigmaGuess()" class="btn-retro flex-1 bg-red-600 text-white py-3 text-[10px]">RESPONDER</button>
+          <button onclick="nextEnigma()" class="btn-retro flex-1 bg-slate-200 py-3 text-[10px]">PULAR</button>
+        </div>
+      </div>
+
+      <!-- Result Area -->
+      <div id="enigma-result" class="w-full max-w-md hidden mt-4 p-4 border-4 border-slate-800 bg-white text-center text-xs font-bold shadow-[4px_4px_0_rgba(0,0,0,0.2)]"></div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // Database of Pokémon with stats, TCG card values, and riddles
+    const POKEMON_DB = [
+      { id: 1, name: "bulbasaur", type1: "grass", type2: "poison", gen: 1, height: 0.7, weight: 6.9, tcgPrice: 15.50, riddle: "Levo uma semente nas minhas costas que cresce conforme o sol me ilumina.", clue1: "É o nº 1 da Pokédex nacional.", clue2: "Tipo Planta e Veneno." },
+      { id: 4, name: "charmander", type1: "fire", type2: "none", gen: 1, height: 0.6, weight: 8.5, tcgPrice: 28.00, riddle: "Se a chama na minha cauda se apagar, a minha vida chegará ao fim.", clue1: "Inicial de Fogo de Kanto.", clue2: "Tipo Fogo puro." },
+      { id: 6, name: "charizard", type1: "fire", type2: "flying", gen: 1, height: 1.7, weight: 90.5, tcgPrice: 350.00, riddle: "Cospo chamas capazes de derreter rochas e voo procurando adversários fortes.", clue1: "Uma das cartas TCG mais valiosas da história.", clue2: "Dragão cuspidor de fogo de Kanto." },
+      { id: 7, name: "squirtle", type1: "water", type2: "none", gen: 1, height: 0.5, weight: 9.0, tcgPrice: 18.00, riddle: "Minha concha me protege de ataques e uso jatos de água com grande precisão.", clue1: "Tartaruga de água inicial.", clue2: "Usa óculos escuros no esquadrão." },
+      { id: 25, name: "pikachu", type1: "electric", type2: "none", gen: 1, height: 0.4, weight: 6.0, tcgPrice: 120.00, riddle: "Guardo eletricidade nas minhas bochechas vermelhas para soltar raios potentes.", clue1: "O mascote oficial de toda a franquia.", clue2: "Evolui usando uma Pedra do Trovão." },
+      { id: 94, name: "gengar", type1: "ghost", type2: "poison", gen: 1, height: 1.5, weight: 40.5, tcgPrice: 85.00, riddle: "Escondo-me nas sombras à noite e adoro pregar peças assustadoras nos viajantes.", clue1: "Evolução do Haunter por troca.", clue2: "Sorriso largo e corpo roxo." },
+      { id: 130, name: "gyarados", type1: "water", type2: "flying", gen: 1, height: 6.5, weight: 235.0, tcgPrice: 65.00, riddle: "Evoluo de um peixe inofensivo para uma serpente marinha cheia de fúria.", clue1: "Evolução do Magikarp no nível 20.", clue2: "Conhecido como o Pokémon Atrocidade." },
+      { id: 133, name: "eevee", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 6.5, tcgPrice: 45.00, riddle: "Possuo um código genético instável que me permite evoluir em muitas formas diferentes.", clue1: "Possui o maior número de evoluções.", clue2: "Pokémon da categoria Evolução." },
+      { id: 143, name: "snorlax", type1: "normal", type2: "none", gen: 1, height: 2.1, weight: 460.0, tcgPrice: 50.00, riddle: "Só acordo para comer mais de 400 quilos de comida antes de voltar a dormir.", clue1: "Bloqueia caminhos em Kanto.", clue2: "Usa uma Pokéflauta para ser acordado." },
+      { id: 150, name: "mewtwo", type1: "psychic", type2: "none", gen: 1, height: 2.0, weight: 122.0, tcgPrice: 210.00, riddle: "Fui criado em laboratório a partir do DNA de outro Pokémon lendário.", clue1: "Criado em Cinnabar Island.", clue2: "O lendário psíquico supremo de Kanto." },
+      { id: 151, name: "mew", type1: "psychic", type2: "none", gen: 1, height: 0.4, weight: 4.0, tcgPrice: 190.00, riddle: "Dizem que possuo o código genético de todos os Pokémons e posso me transformar em qualquer um.", clue1: "Pokémon Mítico Nº 151.", clue2: "Pequeno, rosado e flutuante." },
+      { id: 197, name: "umbreon", type1: "dark", type2: "none", gen: 2, height: 1.0, weight: 27.0, tcgPrice: 140.00, riddle: "Os anéis no meu corpo brilham no escuro quando sinto a energia da lua cheia.", clue1: "Evolução noturna do Eevee com felicidade.", clue2: "Tipo Sombrio introduzido em Johto." },
+      { id: 248, name: "tyranitar", type1: "rock", type2: "dark", gen: 2, height: 2.0, weight: 202.0, tcgPrice: 95.00, riddle: "Minha força é tão devastadora que posso derrubar uma montanha inteira para fazer meu ninho.", clue1: "Pseudolendário da Gen 2.", clue2: "Tipo Pedra e Sombrio." },
+      { id: 249, name: "lugia", type1: "psychic", type2: "flying", gen: 2, height: 5.2, weight: 216.0, tcgPrice: 280.00, riddle: "Aposto minhas asas no fundo do oceano porque um leve bater delas pode causar tempestades de 40 dias.", clue1: "O Guardião dos Mares de Johto.", clue2: "Mascote do jogo Pokémon Silver." },
+      { id: 282, name: "gardevoir", type1: "psychic", type2: "fairy", gen: 3, height: 1.6, weight: 48.4, tcgPrice: 70.00, riddle: "Tenho o poder de prever o futuro e criar pequenos buracos negros para proteger meu treinador.", clue1: "Evolução final do Ralts.", clue2: "Tipo Psíquico e Fada." },
+      { id: 384, name: "rayquaza", type1: "dragon", type2: "flying", gen: 3, height: 7.0, weight: 206.5, tcgPrice: 320.00, riddle: "Vivo na camada de ozônio há milhões de anos e acalmo a fúria de Kyogre e Groudon.", clue1: "Mascote do Pokémon Emerald.", clue2: "Dragão verde dos céus de Hoenn." }
+    ];
+
+    // Sound Engine (Tone.js) - 8-bit style sounds
+    let soundEnabled = true;
+    let synth = null;
+
+    function initSynth() {
+      if (!synth && typeof Tone !== 'undefined') {
+        synth = new Tone.Synth({
+          oscillator: { type: 'square' },
+          envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+        }).toDestination();
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      try {
+        initSynth();
+        if (!synth) return;
+        const now = Tone.now();
+        if (type === 'correct') {
+          synth.triggerAttackRelease('C5', '16n', now);
+          synth.triggerAttackRelease('G5', '8n', now + 0.1);
+        } else if (type === 'wrong') {
+          synth.triggerAttackRelease('C3', '8n', now);
+        } else if (type === 'win') {
+          synth.triggerAttackRelease('G4', '8n', now);
+          synth.triggerAttackRelease('C5', '8n', now + 0.15);
+          synth.triggerAttackRelease('E5', '8n', now + 0.3);
+          synth.triggerAttackRelease('G5', '4n', now + 0.45);
+        }
+      } catch (e) {
+        console.warn("Audio Context blocked.");
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('sound-btn');
+      btn.style.opacity = soundEnabled ? '1' : '0.5';
+    }
+
+    function switchGame(gameKey) {
+      const games = ['wordle', 'pokedex', 'tcg', 'enigma'];
+      games.forEach(g => {
+        const sec = document.getElementById(`game-${g}`);
+        const tab = document.getElementById(`tab-${g}`);
+        if (g === gameKey) {
+          sec.classList.remove('hidden');
+          tab.classList.add('active-tab');
+          tab.classList.remove('text-slate-700', 'hover:bg-slate-100');
+        } else {
+          sec.classList.add('hidden');
+          tab.classList.remove('active-tab');
+          tab.classList.add('text-slate-700', 'hover:bg-slate-100');
+        }
+      });
+    }
+
+    let wordleTarget = null;
+    let wordleAttempts = 0;
+    let wordleWins = 0;
+    const maxWordleAttempts = 7;
+
+    function initWordle() {
+      wordleTarget = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      wordleAttempts = 0;
+      document.getElementById('wordle-attempts').innerText = `0/${maxWordleAttempts}`;
+      document.getElementById('wordle-guesses-container').innerHTML = '';
+      document.getElementById('wordle-input').value = '';
+    }
+
+    document.getElementById('wordle-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitWordleGuess();
+    });
+
+    function submitWordleGuess() {
+      const input = document.getElementById('wordle-input');
+      const val = input.value.trim().toLowerCase();
+      if (!val) return;
+
+      const guess = POKEMON_DB.find(p => p.name.toLowerCase() === val);
+      if (!guess) {
+        playSound('wrong');
+        input.classList.add('border-red-500', 'bg-red-50');
+        setTimeout(() => input.classList.remove('border-red-500', 'bg-red-50'), 300);
+        return;
+      }
+
+      input.value = '';
+      wordleAttempts++;
+      document.getElementById('wordle-attempts').innerText = `${wordleAttempts}/${maxWordleAttempts}`;
+
+      renderWordleRow(guess);
+
+      if (guess.id === wordleTarget.id) {
+        playSound('win');
+        wordleWins++;
+        document.getElementById('wordle-wins').innerText = wordleWins;
+        setTimeout(() => alert(`PARABÉNS! O POKÉMON ERA ${wordleTarget.name.toUpperCase()}!`), 300);
+        setTimeout(initWordle, 1500);
+      } else if (wordleAttempts >= maxWordleAttempts) {
+        playSound('wrong');
+        setTimeout(() => alert(`FIM DE JOGO! O POKÉMON ERA ${wordleTarget.name.toUpperCase()}`), 300);
+        setTimeout(initWordle, 1500);
+      } else {
+        playSound('wrong');
+      }
+    }
+
+    function renderWordleRow(guess) {
+      const container = document.getElementById('wordle-guesses-container');
+      const row = document.createElement('div');
+      
+      // Retro styled row
+      row.className = 'grid grid-cols-6 gap-1 p-2 bg-white border-4 border-slate-800 items-center text-center text-[9px] font-bold animate-pop shadow-[2px_2px_0_rgba(0,0,0,0.2)] mb-2';
+
+      const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${guess.id}.png`;
+
+      const t1Match = guess.type1 === wordleTarget.type1;
+      const t2Match = guess.type2 === wordleTarget.type2;
+      const genMatch = guess.gen === wordleTarget.gen;
+      const genArrow = guess.gen < wordleTarget.gen ? '▲' : (guess.gen > wordleTarget.gen ? '▼' : '');
+
+      const idMatch = guess.id === wordleTarget.id;
+      const idArrow = guess.id < wordleTarget.id ? '▲' : (guess.id > wordleTarget.id ? '▼' : '');
+
+      const getBg = (match) => match ? 'bg-green-100 border-2 border-green-500 text-green-800' : 'bg-red-50 border-2 border-red-300 text-red-800';
+
+      row.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-1 bg-slate-100 border-2 border-slate-300">
+          <img src="${spriteUrl}" alt="${guess.name}" class="w-10 h-10 object-contain rendering-pixelated pixel-shadow"/>
+          <span class="uppercase truncate max-w-full">${guess.name}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full ${getBg(t1Match)}">
+          <span class="px-1 py-1 rounded-sm type-${guess.type1} text-[8px] border border-black">${guess.type1}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full ${getBg(t2Match)}">
+          <span class="px-1 py-1 rounded-sm ${guess.type2 !== 'none' ? 'type-' + guess.type2 : 'bg-slate-300 text-slate-500'} text-[8px] border border-black">${guess.type2}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full flex-col ${getBg(genMatch)}">
+          <span>G${guess.gen}</span><span class="text-xs">${genArrow}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full flex-col ${getBg(idMatch)}">
+          <span>#${guess.id}</span><span class="text-xs">${idArrow}</span>
+        </div>
+        <div class="p-1 flex flex-col justify-center h-full bg-slate-100 border-2 border-slate-300 font-vt text-sm">
+          <span>${guess.height}m</span>
+          <span>${guess.weight}kg</span>
+        </div>
+      `;
+      container.prepend(row);
+    }
+
+    let pokedexP1 = null;
+    let pokedexP2 = null;
+    let pokedexStreak = 0;
+
+    function initPokedexGame() {
+      pokedexP1 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      do {
+        pokedexP2 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      } while (pokedexP2.id === pokedexP1.id);
+
+      document.getElementById('pokedex-p1-img').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexP1.id}.png`;
+      document.getElementById('pokedex-p1-name').innerText = pokedexP1.name;
+      document.getElementById('pokedex-p1-num').innerText = pokedexP1.id;
+
+      const p2Img = document.getElementById('pokedex-p2-img');
+      p2Img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexP2.id}.png`;
+      p2Img.style.filter = "brightness(0) opacity(0.8)";
+      
+      document.getElementById('pokedex-p2-name').innerText = "?????";
+      const numBox = document.getElementById('pokedex-p2-num');
+      numBox.innerText = "???";
+      numBox.classList.add('animate-blink');
+
+      document.getElementById('pokedex-btns').classList.remove('hidden');
+    }
+
+    function guessPokedex(choice) {
+      document.getElementById('pokedex-p2-name').innerText = pokedexP2.name;
+      document.getElementById('pokedex-p2-img').style.filter = "none";
+      
+      const numBox = document.getElementById('pokedex-p2-num');
+      numBox.innerText = pokedexP2.id;
+      numBox.classList.remove('animate-blink');
+
+      const isHigher = pokedexP2.id > pokedexP1.id;
+      const correct = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
+
+      if (correct) {
+        playSound('correct');
+        pokedexStreak++;
+        document.getElementById('pokedex-streak').innerText = pokedexStreak;
+        setTimeout(initPokedexGame, 1500);
+      } else {
+        playSound('wrong');
+        setTimeout(() => {
+          alert(`ERRADO! ${pokedexP2.name.toUpperCase()} É #${pokedexP2.id}. STREAK: ${pokedexStreak}`);
+          pokedexStreak = 0;
+          document.getElementById('pokedex-streak').innerText = 0;
+          initPokedexGame();
+        }, 500);
+      }
+    }
+
+    let tcgC1 = null;
+    let tcgC2 = null;
+    let tcgStreak = 0;
+
+    function initTCGGame() {
+      tcgC1 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      do {
+        tcgC2 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      } while (tcgC2.id === tcgC1.id);
+
+      document.getElementById('tcg-c1-img').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${tcgC1.id}.png`;
+      document.getElementById('tcg-c1-name').innerText = tcgC1.name;
+      document.getElementById('tcg-c1-price').innerText = tcgC1.tcgPrice.toFixed(2);
+
+      const c2Img = document.getElementById('tcg-c2-img');
+      c2Img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${tcgC2.id}.png`;
+      c2Img.style.filter = "brightness(0) opacity(0.5)";
+
+      document.getElementById('tcg-c2-name').innerText = "?????";
+      const priceBox = document.getElementById('tcg-c2-price');
+      priceBox.innerText = "???";
+      
+      document.getElementById('tcg-c2-price-box').classList.add('animate-blink');
+      document.getElementById('tcg-btns').classList.remove('hidden');
+    }
+
+    function guessTCG(choice) {
+      document.getElementById('tcg-c2-name').innerText = tcgC2.name;
+      document.getElementById('tcg-c2-img').style.filter = "none";
+      
+      const priceBox = document.getElementById('tcg-c2-price');
+      priceBox.innerText = tcgC2.tcgPrice.toFixed(2);
+      document.getElementById('tcg-c2-price-box').classList.remove('animate-blink');
+
+      const isHigher = tcgC2.tcgPrice > tcgC1.tcgPrice;
+      const correct = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
+
+      if (correct) {
+        playSound('correct');
+        tcgStreak++;
+        document.getElementById('tcg-streak').innerText = tcgStreak;
+        setTimeout(initTCGGame, 1500);
+      } else {
+        playSound('wrong');
+        setTimeout(() => {
+          alert(`ERRADO! A CARTA VALE $${tcgC2.tcgPrice.toFixed(2)}. VITÓRIAS: ${tcgStreak}`);
+          tcgStreak = 0;
+          document.getElementById('tcg-streak').innerText = 0;
+          initTCGGame();
+        }, 500);
+      }
+    }
+
+    let enigmaCurrent = null;
+
+    function nextEnigma() {
+      enigmaCurrent = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      document.getElementById('enigma-text').innerText = enigmaCurrent.riddle;
+      document.getElementById('enigma-clue-1').innerText = enigmaCurrent.clue1;
+      document.getElementById('enigma-clue-2').innerText = enigmaCurrent.clue2;
+      document.getElementById('enigma-input').value = '';
+      
+      const res = document.getElementById('enigma-result');
+      res.classList.add('hidden');
+    }
+
+    document.getElementById('enigma-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitEnigmaGuess();
+    });
+
+    function submitEnigmaGuess() {
+      const val = document.getElementById('enigma-input').value.trim().toLowerCase();
+      const res = document.getElementById('enigma-result');
+      if (!val) return;
+
+      if (val === enigmaCurrent.name.toLowerCase()) {
+        playSound('win');
+        res.className = "w-full max-w-md p-4 border-4 border-green-800 bg-green-100 text-center font-bold text-xs text-green-800 shadow-[4px_4px_0_rgba(0,0,0,0.2)] mt-4 animate-pop";
+        res.innerText = `CORRETO! É O ${enigmaCurrent.name.toUpperCase()}!`;
+        res.classList.remove('hidden');
+        setTimeout(nextEnigma, 2000);
+      } else {
+        playSound('wrong');
+        res.className = "w-full max-w-md p-4 border-4 border-red-800 bg-red-100 text-center font-bold text-xs text-red-800 shadow-[4px_4px_0_rgba(0,0,0,0.2)] mt-4 animate-pop";
+        res.innerText = `ERRADO! "${val.toUpperCase()}" NÃO É A RESPOSTA.`;
+        res.classList.remove('hidden');
+      }
+    }
+
+    // Initialize all on load
+    window.onload = function() {
+      initWordle();
+      initPokedexGame();
+      initTCGGame();
+      nextEnigma();
+    };
+  </script>
+</body>
+</html>
