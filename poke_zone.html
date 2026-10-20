@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poke Zone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gba-bg: #e8f0f8;
+      --gba-border: #2c3e50;
+      --pkmn-red: #e3350d;
+      --pkmn-blue: #3164b3;
+    }
+
+    body {
+      font-family: 'Press Start 2P', cursive;
+      background-color: var(--gba-bg);
+      /* Subtle grid background typical of retro menus */
+      background-image: linear-gradient(#d0d8e0 1px, transparent 1px), linear-gradient(90deg, #d0d8e0 1px, transparent 1px);
+      background-size: 20px 20px;
+      min-height: 100vh;
+      color: #111;
+    }
+    
+    .font-vt {
+      font-family: 'VT323', monospace;
+      font-size: 1.25rem;
+      letter-spacing: 0.5px;
+    }
+
+    /* Classic Pokémon Dialogue Box */
+    .dialogue-box {
+      background-color: white;
+      border: 6px solid var(--gba-border);
+      border-radius: 12px;
+      box-shadow: inset 0 0 0 4px #f8f8f8, 4px 4px 0px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .dialogue-box::before {
+      content: '';
+      position: absolute;
+      top: 4px; left: 4px; right: 4px; bottom: 4px;
+      border: 2px solid #d1d5db;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* Retro Button */
+    .btn-retro {
+      background-color: white;
+      border: 4px solid var(--gba-border);
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.3);
+      text-transform: uppercase;
+      transition: all 0.1s;
+    }
+    .btn-retro:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px rgba(0,0,0,0.3);
+    }
+    .btn-retro.active-tab {
+      background-color: var(--pkmn-red);
+      color: white;
+    }
+
+    /* Type Badge colors - Solid classic colors */
+    .type-fire { background-color: #F08030; color: white; }
+    .type-water { background-color: #6890F0; color: white; }
+    .type-grass { background-color: #78C850; color: white; }
+    .type-electric { background-color: #F8D030; color: black; }
+    .type-ice { background-color: #98D8D8; color: black; }
+    .type-fighting { background-color: #C03028; color: white; }
+    .type-poison { background-color: #A040A0; color: white; }
+    .type-ground { background-color: #E0C068; color: black; }
+    .type-flying { background-color: #A890F0; color: white; }
+    .type-psychic { background-color: #F85888; color: white; }
+    .type-bug { background-color: #A8B820; color: white; }
+    .type-rock { background-color: #B8A038; color: white; }
+    .type-ghost { background-color: #705898; color: white; }
+    .type-dragon { background-color: #7038F8; color: white; }
+    .type-steel { background-color: #B8B8D0; color: black; }
+    .type-fairy { background-color: #EE99AC; color: black; }
+    .type-normal { background-color: #A8A878; color: black; }
+    .type-dark { background-color: #705848; color: white; }
+
+    /* Custom Animations */
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .animate-blink { animation: blink 1s infinite; }
+    
+    @keyframes pop {
+      0% { transform: scale(0.95); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop { animation: pop 0.2s steps(2, end) forwards; }
+    
+    .pixel-shadow { filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2)); }
+    
+    input::placeholder { color: #9ca3af; font-family: 'VT323', monospace; font-size: 1.1rem; }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen overflow-x-hidden">
+
+  <header class="bg-red-600 border-b-8 border-red-800 sticky top-0 z-40 shadow-[0_4px_0_rgba(0,0,0,0.2)]">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center space-x-3">
+        <div class="w-12 h-12 bg-white rounded-full border-4 border-black relative overflow-hidden flex items-center justify-center">
+          <div class="absolute top-0 w-full h-1/2 bg-red-500"></div>
+          <div class="absolute w-full h-1 bg-black"></div>
+          <div class="absolute w-4 h-4 bg-white border-2 border-black rounded-full z-10"></div>
+        </div>
+        <div class="text-white drop-shadow-[2px_2px_0_rgba(0,0,0,1)]">
+          <h1 class="text-xl tracking-widest uppercase">Poke Zone</h1>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center gap-2 overflow-x-auto max-w-full pb-2 md:pb-0 scrollbar-hide">
+        <button id="tab-wordle" onclick="switchGame('wordle')" class="btn-retro active-tab px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap">
+          Wordle
+        </button>
+        <button id="tab-pokedex" onclick="switchGame('pokedex')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          Pokédex
+        </button>
+        <button id="tab-tcg" onclick="switchGame('tcg')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          TCG
+        </button>
+        <button id="tab-enigma" onclick="switchGame('enigma')" class="btn-retro px-3 py-2 text-[10px] md:text-xs font-bold whitespace-nowrap text-slate-700 hover:bg-slate-100">
+          Enigma
+        </button>
+      </nav>
+
+      <!-- Global Sound Toggle -->
+      <button id="sound-btn" onclick="toggleSound()" class="btn-retro p-2 text-slate-700">
+        <svg id="sound-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+          <path d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 5L6 9H2v6h4l5 4V5z"/>
+        </svg>
+      </button>
+
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-8 flex flex-col items-center">
+
+    <section id="game-wordle" class="w-full flex flex-col items-center animate-pop">
+      
+      <div class="dialogue-box w-full max-w-2xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <p class="font-vt text-lg text-slate-800 leading-tight">
+          <span class="text-red-600 font-bold">INFO:</span> Adivinhe o Pokémon usando atributos como Tipo, Geração, e Peso.
+        </p>
+        <div class="text-[10px] text-right space-y-2 border-l-4 border-slate-300 pl-4">
+          <div>Tentativas:<br><span id="wordle-attempts" class="text-blue-700">0/7</span></div>
+          <div>Vitórias:<br><span id="wordle-wins" class="text-green-700">0</span></div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="relative w-full max-w-xl mb-8 flex gap-2">
+        <div class="relative flex-grow">
+          <input 
+            type="text" 
+            id="wordle-input" 
+            autocomplete="off"
+            placeholder="NOME DO POKEMON..." 
+            class="w-full px-4 py-3 border-4 border-slate-800 font-vt text-xl uppercase outline-none focus:bg-yellow-50 shadow-[4px_4px_0_rgba(0,0,0,0.2)]"
+          />
+          <!-- Autocomplete Dropdown -->
+          <ul id="wordle-suggestions" class="absolute z-50 w-full bg-white border-4 border-slate-800 mt-1 max-h-60 overflow-y-auto hidden shadow-[4px_4px_0_rgba(0,0,0,0.2)] font-vt text-lg"></ul>
+        </div>
+        <button 
+          onclick="submitWordleGuess()" 
+          class="btn-retro bg-blue-600 text-white px-6 py-3 border-blue-900 text-xs"
+        >
+          OK
+        </button>
+      </div>
+
+      <!-- Comparison Header -->
+      <div class="w-full overflow-x-auto pb-4">
+        <div class="min-w-[650px] grid grid-cols-6 gap-2 mb-2 px-2 text-center text-[10px] text-slate-600 uppercase border-b-4 border-slate-400 pb-2">
+          <div>Pokémon</div>
+          <div>Tipo 1</div>
+          <div>Tipo 2</div>
+          <div>Geração</div>
+          <div>Pokédex</div>
+          <div>Tam/Peso</div>
+        </div>
+
+        <!-- Guesses Container -->
+        <div id="wordle-guesses-container" class="min-w-[650px] flex flex-col space-y-2"></div>
+      </div>
+    </section>
+
+    <section id="game-pokedex" class="w-full max-w-3xl flex flex-col items-center hidden animate-pop">
+      
+      <div class="dialogue-box w-full p-4 mb-6 text-center">
+        <h2 class="text-sm md:text-base text-red-600 mb-2">Maior ou Menor?</h2>
+        <p class="font-vt text-lg md:text-xl">O POKÉMON #2 tem um número na Pokédex MAIOR ou MENOR que o #1?</p>
+      </div>
+
+      <div class="mb-6 px-4 py-2 border-4 border-slate-800 bg-yellow-100 text-[10px] flex gap-2 items-center shadow-[4px_4px_0_rgba(0,0,0,0.2)]">
+        <span>STREAK:</span>
+        <span id="pokedex-streak" class="text-sm text-red-600">0</span>
+      </div>
+
+      <!-- Cards Comparison Container -->
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+        
+        <!-- Pokemon 1 (Known) -->
+        <div class="dialogue-box p-4 flex flex-col items-center text-center">
+          <span class="bg-black text-white px-2 py-1 text-[8px] mb-2">POKÉMON #1</span>
+          <img id="pokedex-p1-img" src="" alt="Pokemon 1" class="w-32 h-32 object-contain my-2 pixel-shadow rendering-pixelated">
+          <h3 id="pokedex-p1-name" class="text-xs uppercase mt-2">--</h3>
+          <div class="mt-4 border-4 border-slate-800 bg-slate-100 px-4 py-2 text-sm w-full">
+            No. <span id="pokedex-p1-num" class="text-blue-600">---</span>
+          </div>
+        </div>
+
+        <!-- VS Badge for mobile -->
+        <div class="md:hidden text-center -my-4 z-10">
+          <span class="bg-red-600 text-white px-3 py-2 border-4 border-slate-800 text-xs">VS</span>
+        </div>
+
+        <!-- Pokemon 2 (Guess Target) -->
+        <div class="dialogue-box p-4 flex flex-col items-center text-center bg-blue-50">
+          <span class="bg-blue-600 text-white px-2 py-1 text-[8px] mb-2">POKÉMON #2</span>
+          <img id="pokedex-p2-img" src="" alt="Pokemon 2" class="w-32 h-32 object-contain my-2 pixel-shadow filter brightness-0 opacity-80" style="transition: filter 0.3s">
+          <h3 id="pokedex-p2-name" class="text-xs uppercase mt-2">?????</h3>
+          
+          <div class="mt-4 border-4 border-slate-800 bg-slate-100 px-4 py-2 text-sm w-full">
+            No. <span id="pokedex-p2-num" class="text-red-600 animate-blink">???</span>
+          </div>
+
+          <div id="pokedex-btns" class="grid grid-cols-2 gap-2 w-full mt-4">
+            <button onclick="guessPokedex('higher')" class="btn-retro bg-green-500 border-green-800 py-3 text-[10px] text-white">MAIOR</button>
+            <button onclick="guessPokedex('lower')" class="btn-retro bg-red-500 border-red-800 py-3 text-[10px] text-white">MENOR</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="game-tcg" class="w-full max-w-3xl flex flex-col items-center hidden animate-pop">
+      
+      <div class="dialogue-box w-full p-4 mb-6 text-center">
+        <h2 class="text-sm md:text-base text-blue-700 mb-2">Batalha de Cartas</h2>
+        <p class="font-vt text-lg md:text-xl">A Carta #2 vale MAIS ou MENOS dinheiro que a Carta #1?</p>
+      </div>
+
+      <div class="mb-6 px-4 py-2 border-4 border-slate-800 bg-green-100 text-[10px] flex gap-2 items-center shadow-[4px_4px_0_rgba(0,0,0,0.2)]">
+        <span>VITÓRIAS:</span>
+        <span id="tcg-streak" class="text-sm text-green-700">0</span>
+      </div>
+
+      <!-- Cards Grid -->
+      <div class="w-full flex flex-col md:flex-row justify-center gap-8 items-center">
+        
+        <!-- Card 1 -->
+        <div class="bg-yellow-400 p-2 border-[6px] border-slate-800 shadow-[8px_8px_0_rgba(0,0,0,0.3)] w-56 flex flex-col items-center">
+          <div class="bg-white w-full border-2 border-black p-1 text-[8px] text-right font-bold mb-1">CARTA 1</div>
+          <div class="w-full h-48 bg-slate-200 border-4 border-black overflow-hidden flex items-center justify-center p-2 bg-gradient-to-br from-slate-100 to-slate-400">
+            <img id="tcg-c1-img" src="" alt="Card 1" class="max-h-full object-contain filter drop-shadow">
+          </div>
+          <div class="bg-white border-4 border-slate-800 w-full p-2 mt-2 text-center">
+            <h3 id="tcg-c1-name" class="text-[10px] uppercase truncate mb-1">--</h3>
+            <p class="text-sm text-green-600">$<span id="tcg-c1-price">0.00</span></p>
+          </div>
+        </div>
+
+        <div class="text-xl font-bold md:-mx-4 z-10 text-slate-500">VS</div>
+
+        <!-- Card 2 -->
+        <div class="bg-blue-400 p-2 border-[6px] border-slate-800 shadow-[8px_8px_0_rgba(0,0,0,0.3)] w-56 flex flex-col items-center">
+          <div class="bg-white w-full border-2 border-black p-1 text-[8px] text-right font-bold mb-1">CARTA 2</div>
+          <div class="w-full h-48 bg-slate-200 border-4 border-black overflow-hidden flex items-center justify-center p-2 bg-gradient-to-br from-slate-100 to-slate-400">
+            <img id="tcg-c2-img" src="" alt="Card 2" class="max-h-full object-contain filter brightness-0 opacity-50" style="transition: filter 0.3s">
+          </div>
+          <div class="bg-white border-4 border-slate-800 w-full p-2 mt-2 text-center">
+            <h3 id="tcg-c2-name" class="text-[10px] uppercase truncate mb-1">?????</h3>
+            <p id="tcg-c2-price-box" class="text-sm text-red-600 animate-blink">$<span id="tcg-c2-price">???</span></p>
+          </div>
+          <div id="tcg-btns" class="w-full mt-2 space-y-1">
+            <button onclick="guessTCG('higher')" class="btn-retro w-full bg-green-500 py-1.5 text-[8px] text-white">VALE MAIS</button>
+            <button onclick="guessTCG('lower')" class="btn-retro w-full bg-red-500 py-1.5 text-[8px] text-white">VALE MENOS</button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section id="game-enigma" class="w-full max-w-2xl flex flex-col items-center hidden animate-pop">
+      
+      <!-- Riddle Container Box -->
+      <div class="dialogue-box w-full p-6 sm:p-8 mb-6 relative">
+        <div class="absolute -top-3 left-4 bg-white border-4 border-slate-800 px-3 py-1 text-[10px]">
+          CHARADA
+        </div>
+
+        <p class="font-vt text-xl md:text-2xl text-slate-800 leading-relaxed mb-6 mt-2">
+          "<span id="enigma-text">Carregando enigma...</span>"
+        </p>
+
+        <!-- Clues List -->
+        <div class="space-y-3 font-vt text-lg text-slate-600 border-t-2 border-dashed border-slate-300 pt-4">
+          <div><span class="text-red-600 font-bold">Dica 1:</span> <span id="enigma-clue-1">--</span></div>
+          <div><span class="text-blue-600 font-bold">Dica 2:</span> <span id="enigma-clue-2">--</span></div>
+        </div>
+      </div>
+
+      <!-- Guess Input -->
+      <div class="relative w-full max-w-md flex flex-col gap-3">
+        <input 
+          type="text" 
+          id="enigma-input" 
+          autocomplete="off"
+          placeholder="QUEM É ESTE POKÉMON?" 
+          class="w-full px-4 py-3 border-4 border-slate-800 font-vt text-xl text-center uppercase outline-none focus:bg-yellow-50 shadow-[4px_4px_0_rgba(0,0,0,0.2)]"
+        />
+        <div class="flex gap-2">
+          <button onclick="submitEnigmaGuess()" class="btn-retro flex-1 bg-red-600 text-white py-3 text-[10px]">RESPONDER</button>
+          <button onclick="nextEnigma()" class="btn-retro flex-1 bg-slate-200 py-3 text-[10px]">PULAR</button>
+        </div>
+      </div>
+
+      <!-- Result Area -->
+      <div id="enigma-result" class="w-full max-w-md hidden mt-4 p-4 border-4 border-slate-800 bg-white text-center text-xs font-bold shadow-[4px_4px_0_rgba(0,0,0,0.2)]"></div>
+
+    </section>
+
+  </main>
+
+  <script>
+    // Database of 200 Pokémon with stats, TCG card values, and riddles
+    const POKEMON_DB = [
+      { id: 1, name: "bulbasaur", type1: "grass", type2: "poison", gen: 1, height: 0.7, weight: 6.9, tcgPrice: 15.50, riddle: "Levo uma semente nas minhas costas que cresce conforme o sol me ilumina.", clue1: "É o nº 1 da Pokédex nacional.", clue2: "Tipo Planta e Veneno." },
+      { id: 2, name: "ivysaur", type1: "grass", type2: "poison", gen: 1, height: 1.0, weight: 13.0, tcgPrice: 8.00, riddle: "Quando o botão nas minhas costas cresce, perco a capacidade de me levantar nas patas traseiras.", clue1: "Evolução do Bulbasaur.", clue2: "Possui uma flor desabrochando." },
+      { id: 3, name: "venusaur", type1: "grass", type2: "poison", gen: 1, height: 2.0, weight: 100.0, tcgPrice: 85.00, riddle: "Minha flor exala um aroma suave que acalma as emoções das pessoas durante batalhas.", clue1: "Forma final do inicial de Planta de Kanto.", clue2: "Pode Gigantamaxilar na Gen 8." },
+      { id: 4, name: "charmander", type1: "fire", type2: "none", gen: 1, height: 0.6, weight: 8.5, tcgPrice: 28.00, riddle: "Se a chama na minha cauda se apagar, a minha vida chegará ao fim.", clue1: "Inicial de Fogo de Kanto.", clue2: "Tipo Fogo puro." },
+      { id: 5, name: "charmeleon", type1: "fire", type2: "none", gen: 1, height: 1.1, weight: 19.0, tcgPrice: 12.00, riddle: "Derrubo meus oponentes usando minha cauda afiada e garras incrivelmente fortes.", clue1: "Evolução do Charmander.", clue2: "Cor vermelha escura e atitude rebelde." },
+      { id: 6, name: "charizard", type1: "fire", type2: "flying", gen: 1, height: 1.7, weight: 90.5, tcgPrice: 350.00, riddle: "Cospo chamas capazes de derreter rochas e voo procurando adversários fortes.", clue1: "Uma das cartas TCG mais valiosas da história.", clue2: "Dragão cuspidor de fogo de Kanto." },
+      { id: 7, name: "squirtle", type1: "water", type2: "none", gen: 1, height: 0.5, weight: 9.0, tcgPrice: 18.00, riddle: "Minha concha me protege de ataques e uso jatos de água com grande precisão.", clue1: "Tartaruga de água inicial.", clue2: "Usa óculos escuros no esquadrão." },
+      { id: 8, name: "wartortle", type1: "water", type2: "none", gen: 1, height: 1.0, weight: 22.5, tcgPrice: 10.00, riddle: "Minha cauda felpuda é um símbolo de longevidade e fica mais escura com o tempo.", clue1: "Evolução do Squirtle.", clue2: "Tartaruga com orelhas e cauda onduladas." },
+      { id: 9, name: "blastoise", type1: "water", type2: "none", gen: 1, height: 1.6, weight: 85.5, tcgPrice: 110.00, riddle: "Possuo dois canhões de água no meu casco capazes de perfurar até o aço.", clue1: "Forma final do Squirtle.", clue2: "Mascote do Pokémon Blue." },
+      { id: 10, name: "caterpie", type1: "bug", type2: "none", gen: 1, height: 0.3, weight: 2.9, tcgPrice: 2.00, riddle: "Libero um odor horrível através da antena vermelha em minha cabeça para afastar predadores.", clue1: "O primeiro Pokémon lagarta.", clue2: "Evolui no nível 7." },
+      { id: 11, name: "metapod", type1: "bug", type2: "none", gen: 1, height: 0.7, weight: 9.9, tcgPrice: 1.50, riddle: "Minha casca endurecida protege meu corpo suave enquanto me preparo para evoluir.", clue1: "Conhecido pelo golpe Harden.", clue2: "Casulo verde." },
+      { id: 12, name: "butterfree", type1: "bug", type2: "flying", gen: 1, height: 1.1, weight: 32.0, tcgPrice: 22.00, riddle: "Coleto néctar todos os dias e posso lançar poeiras tóxicas ou soníferas pelas asas.", clue1: "Borboleta da Gen 1.", clue2: "Primeira libertação marcante no anime." },
+      { id: 13, name: "weedle", type1: "bug", type2: "poison", gen: 1, height: 0.3, weight: 3.2, tcgPrice: 2.00, riddle: "Tenho um espinho afiado na cabeça que injeta veneno em quem pisar em mim.", clue1: "Lagarta da floresta de Viridian.", clue2: "Evolui para Kakuna." },
+      { id: 14, name: "kakuna", type1: "bug", type2: "poison", gen: 1, height: 0.6, weight: 10.0, tcgPrice: 1.50, riddle: "Fico quase imóvel preso às árvores enquanto meu corpo interno se transforma.", clue1: "Casulo amarelo.", clue2: "Evolui para Beedrill." },
+      { id: 15, name: "beedrill", type1: "bug", type2: "poison", gen: 1, height: 1.0, weight: 29.5, tcgPrice: 15.00, riddle: "Ataco em enxames usando os ferões grandes e afiados das minhas patas e cauda.", clue1: "Vespa venenosa.", clue2: "Tem uma Mega Evolução com 5 ferrões." },
+      { id: 16, name: "pidgey", type1: "normal", type2: "flying", gen: 1, height: 0.3, weight: 1.8, tcgPrice: 3.00, riddle: "Muito dócil, prefiro bater as asas na areia para criar tempestades de poeira e fugir.", clue1: "Passarinho comum das primeiras rotas.", clue2: "Evolui para Pidgeotto." },
+      { id: 17, name: "pidgeotto", type1: "normal", type2: "flying", gen: 1, height: 1.1, weight: 30.0, tcgPrice: 5.00, riddle: "Voo em círculos sobre meu território procurando presas como Exeggcute ou Magikarp.", clue1: "Evolução do Pidgey.", clue2: "Garras afiadas e plumagem exuberante." },
+      { id: 18, name: "pidgeot", type1: "normal", type2: "flying", gen: 1, height: 1.5, weight: 39.5, tcgPrice: 35.00, riddle: "Consigo voar na velocidade de Mach 2 e minhas penas brilhantes impressionam treinadores.", clue1: "Forma final da linha do Pidgey.", clue2: "Foi o fiel voador de Ash em Kanto." },
+      { id: 19, name: "rattata", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 3.5, tcgPrice: 2.00, riddle: "Meus dentes roem qualquer coisa e me reproduzo extremamente rápido em vilas.", clue1: "Rato roxo comum de Kanto.", clue2: "Tem forma regional em Alola." },
+      { id: 20, name: "raticate", type1: "normal", type2: "none", gen: 1, height: 0.7, weight: 18.5, tcgPrice: 6.00, riddle: "Uso meus bigodes para manter o equilíbrio e roigo madeira sólida e até prédios.", clue1: "Evolução do Rattata.", clue2: "Conhecido pelo golpe Hyper Fang." },
+      { id: 21, name: "spearow", type1: "normal", type2: "flying", gen: 1, height: 0.3, weight: 2.0, tcgPrice: 2.50, riddle: "Pequeno mas muito agressivo, emito gritos altos para chamar o bando.", clue1: "Pássaro irritadiço no ep 1 do anime.", clue2: "Evolui para Fearow." },
+      { id: 22, name: "fearow", type1: "normal", type2: "flying", gen: 1, height: 1.2, weight: 38.0, tcgPrice: 8.00, riddle: "Com meu bico longo e pescoço flexível, alcanço presas no solo sem nem pousar.", clue1: "Evolução do Spearow.", clue2: "Aves de rapina com asas gigantes." },
+      { id: 23, name: "ekans", type1: "poison", type2: "none", gen: 1, height: 2.0, weight: 6.9, tcgPrice: 4.00, riddle: "Movo-me silenciosamente pela grama e engulo ovos de pássaros inteiros.", clue1: "Seu nome ao contrário é 'Snake'.", clue2: "Cobra roxa da Equipe Rocket." },
+      { id: 24, name: "arbok", type1: "poison", type2: "none", gen: 1, height: 3.5, weight: 65.0, tcgPrice: 18.00, riddle: "O padrão assustador no meu peito varia de região para região e paralisa os inimigos.", clue1: "Seu nome ao contrário é 'Kobra'.", clue2: "Evolução do Ekans." },
+      { id: 25, name: "pikachu", type1: "electric", type2: "none", gen: 1, height: 0.4, weight: 6.0, tcgPrice: 120.00, riddle: "Guardo eletricidade nas minhas bochechas vermelhas para soltar raios potentes.", clue1: "O mascote oficial de toda a franquia.", clue2: "Evolui usando uma Pedra do Trovão." },
+      { id: 26, name: "raichu", type1: "electric", type2: "none", gen: 1, height: 0.8, weight: 30.0, tcgPrice: 40.00, riddle: "Se acumular muita eletricidade, descarrego minha cauda em formato de raio no chão.", clue1: "Evolução direta do Pikachu.", clue2: "Derrotou Pikachu no ginásio do Lt. Surge." },
+      { id: 27, name: "sandshrew", type1: "ground", type2: "none", gen: 1, height: 0.6, weight: 12.0, tcgPrice: 5.00, riddle: "Enrolo-me em uma bola dura para me defender e habito regiões secas e desérticas.", clue1: "Tatu/Tatus-bola de Kanto.", clue2: "Tem forma de Gelo em Alola." },
+      { id: 28, name: "sandslash", type1: "ground", type2: "none", gen: 1, height: 1.0, weight: 29.5, tcgPrice: 12.00, riddle: "Tenho espinhos duros nas costas e uso garras afiadas para cavar buracos velozmente.", clue1: "Evolução do Sandshrew.", clue2: "Tipo Terra puro em Kanto." },
+      { id: 29, name: "nidoran♀", type1: "poison", type2: "none", gen: 1, height: 0.4, weight: 7.0, tcgPrice: 4.00, riddle: "Embora pequena, meus farpas contêm um veneno poderoso para autodefesa.", clue1: "Pokémon com símbolo de gênero feminino.", clue2: "Evolui para Nidorina." },
+      { id: 30, name: "nidorina", type1: "poison", type2: "none", gen: 1, height: 0.8, weight: 20.0, tcgPrice: 6.00, riddle: "Dócil em família, meu chifre cresce devagar e prefiro mastigar alimentos com cuidado.", clue1: "Forma intermediária feminina do Nidoran.", clue2: "Evolui com Pedra da Lua." },
+      { id: 31, name: "nidoqueen", type1: "poison", type2: "ground", gen: 1, height: 1.3, weight: 60.0, tcgPrice: 30.00, riddle: "Meu corpo é coberto por escamas duras e protejo meus filhotes com minha própria vida.", clue1: "Evolução final feminina da linha Nidoran.", clue2: "Tipo Veneno e Terra." },
+      { id: 32, name: "nidoran♂", type1: "poison", type2: "none", gen: 1, height: 0.5, weight: 9.0, tcgPrice: 4.00, riddle: "Movo minhas orelhas em todas as direções e ataco com meu chifre veneno.", clue1: "Pokémon com símbolo de gênero masculino.", clue2: "Evolui para Nidorino." },
+      { id: 33, name: "nidorino", type1: "poison", type2: "none", gen: 1, height: 0.9, weight: 19.5, tcgPrice: 6.00, riddle: "Facilmente irritável, meu chifre é mais duro que diamante e injeta veneno ao perfurar.", clue1: "Aparece na animação de abertura do Red/Blue.", clue2: "Evolui com Pedra da Lua." },
+      { id: 34, name: "nidoking", type1: "poison", type2: "ground", gen: 1, height: 1.4, weight: 62.0, tcgPrice: 45.00, riddle: "Uso minha cauda poderosa para quebrar ossos e destruo tudo no meu caminho com fúria.", clue1: "Rei venenoso de Kanto.", clue2: "Monstro roxo com chifre e cauda fortes." },
+      { id: 35, name: "clefairy", type1: "fairy", type2: "none", gen: 1, height: 0.6, weight: 7.5, tcgPrice: 15.00, riddle: "Dizem que vim do espaço. Danço em círculos sob a luz da lua cheia com meus companheiros.", clue1: "Originalmente planejada para ser a mascote.", clue2: "Evolui com Pedra da Lua." },
+      { id: 36, name: "clefable", type1: "fairy", type2: "none", gen: 1, height: 1.3, weight: 40.0, tcgPrice: 25.00, riddle: "Sua audição apurada consegue ouvir um alfinete caindo a quilômetros de distância.", clue1: "Evolução da Clefairy.", clue2: "Tipo Fada puríssimo e rosa." },
+      { id: 37, name: "vulpix", type1: "fire", type2: "none", gen: 1, height: 0.6, weight: 9.9, tcgPrice: 20.00, riddle: "Nasço com apenas uma cauda branca que se divide em seis lindas caudas flamejantes.", clue1: "Fox fofa de fogo.", clue2: "Evolui com Pedra do Fogo." },
+      { id: 38, name: "ninetales", type1: "fire", type2: "none", gen: 1, height: 1.1, weight: 19.9, tcgPrice: 50.00, riddle: "Dizem que cada uma das minhas nove caudas possui poderes místico e posso viver mil anos.", clue1: "Raposa mística de fogo.", clue2: "Lenda viva da Gen 1." },
+      { id: 39, name: "jigglypuff", type1: "normal", type2: "fairy", gen: 1, height: 0.5, weight: 5.5, tcgPrice: 18.00, riddle: "Canto uma melodia relaxante que faz qualquer um dormir imediatamente, e fico brava se dormirem!", clue1: "Adora rabiscar rostos de quem dorme.", clue2: "Esfera rosa fofinha." },
+      { id: 40, name: "wigglytuff", type1: "normal", type2: "fairy", gen: 1, height: 1.0, weight: 12.0, tcgPrice: 14.00, riddle: "Meu pelame é tão macio e gostoso que quem o toca não consegue mais parar de me abraçar.", clue1: "Evolução do Jigglypuff.", clue2: "Olhos gigantes e corpo inflável." },
+      { id: 41, name: "zubat", type1: "poison", type2: "flying", gen: 1, height: 0.8, weight: 7.5, tcgPrice: 1.00, riddle: "Não tenho olhos nem nariz. Guio-me em cavernas escuras através de ondas ultrassônicas.", clue1: "O terror de todos em cavernas.", clue2: "Evolui para Golbat." },
+      { id: 42, name: "golbat", type1: "poison", type2: "flying", gen: 1, height: 1.6, weight: 55.0, tcgPrice: 4.00, riddle: "Mordo minhas vítimas com presas afiadas e posso beber mais de 300ml de sangue de uma só vez.", clue1: "Evolução do Zubat.", clue2: "Boca gigante e dentes venenosos." },
+      { id: 43, name: "oddish", type1: "grass", type2: "poison", gen: 1, height: 0.5, weight: 5.4, tcgPrice: 3.00, riddle: "Durante o dia fico enterrável no solo. À noite caminho sob a luz do luar espalhando sementes.", clue1: "Rabanete ambulante de Kanto.", clue2: "Evolui para Gloom." },
+      { id: 44, name: "gloom", type1: "grass", type2: "poison", gen: 1, height: 0.8, weight: 8.6, tcgPrice: 4.00, riddle: "O fluido que escorre da minha boca e o cheiro da minha flor podem fazer qualquer um desmaiar.", clue1: "Etapa intermediária do Oddish.", clue2: "Pode evoluir para Vileplume ou Bellossom." },
+      { id: 45, name: "vileplume", type1: "grass", type2: "poison", gen: 1, height: 1.2, weight: 18.6, tcgPrice: 20.00, riddle: "Tenho as maiores pétalas do mundo e espalho pólen alérgico ao caminhar pela floresta.", clue1: "Baseado na flor Rafflesia.", clue2: "Evolução de Gloom com Pedra da Folha." },
+      { id: 50, name: "diglett", type1: "ground", type2: "none", gen: 1, height: 0.2, weight: 0.8, tcgPrice: 3.00, riddle: "Vivo subterraneamente e ninguém nunca viu como é a parte de baixo do meu corpo.", clue1: "Pequena cabeça que sai do chão.", clue2: "Conhecido pela Diglett's Cave." },
+      { id: 51, name: "dugtrio", type1: "ground", type2: "none", gen: 1, height: 0.7, weight: 33.3, tcgPrice: 10.00, riddle: "Três cabeças trabalhando juntas para causar terremotos e escavar até 100km sob a terra.", clue1: "Três Digletts juntos.", clue2: "Velocidade surpreendente para tipo Terra." },
+      { id: 52, name: "meowth", type1: "normal", type2: "none", gen: 1, height: 0.4, weight: 4.2, tcgPrice: 12.00, riddle: "Adoro objetos brilhantes e moedas reluzentes. Tenho uma moeda de ouro na minha testa.", clue1: "Gato falante famoso da Equipe Rocket.", clue2: "Aprende Pay Day." },
+      { id: 53, name: "persian", type1: "normal", type2: "none", gen: 1, height: 1.0, weight: 32.0, tcgPrice: 15.00, riddle: "Elegante e orgulhoso, a joia na minha testa brilha intensamente quando me preparo para atacar.", clue1: "O mascote de Giovanni.", clue2: "Evolução do Meowth." },
+      { id: 54, name: "psyduck", type1: "water", type2: "none", gen: 1, height: 0.8, weight: 19.6, tcgPrice: 16.00, riddle: "Sofro constantemente de dores de cabeça. Quando ela fica insuportável, liberto poderes psíquicos.", clue1: "Pato amarelo confuso do Misty.", clue2: "Apesar do poder psíquico, é tipo Água puro." },
+      { id: 55, name: "golduck", type1: "water", type2: "none", gen: 1, height: 1.7, weight: 76.6, tcgPrice: 18.00, riddle: "Um nadador impecável. A joia na minha testa brilha quando uso telecinese.", clue1: "Evolução do Psyduck.", clue2: "Corpo azul e mãos com membranas." },
+      { id: 58, name: "growlithe", type1: "fire", type2: "none", gen: 1, height: 0.7, weight: 19.0, tcgPrice: 15.00, riddle: "Extremamente leal e protetor com meu treinador, rugindo para espantar intrusos.", clue1: "Cão policial de Kanto.", clue2: "Evolui com Pedra do Fogo." },
+      { id: 59, name: "arcanine", type1: "fire", type2: "none", gen: 1, height: 1.9, weight: 155.0, tcgPrice: 60.00, riddle: "Conhecido por sua majestade e velocidade, corre mais de 10.000 km em apenas um dia.", clue1: "O Pokémon Lendário (embora não seja lendário de fato).", clue2: "Evolução do Growlithe." },
+      { id: 63, name: "abra", type1: "psychic", type2: "none", gen: 1, height: 0.9, weight: 19.5, tcgPrice: 8.00, riddle: "Dormo 18 horas por dia e uso Teleport instantaneamente se sentir qualquer perigo se aproximando.", clue1: "Foge da batalha no primeiro turno.", clue2: "Evolui para Kadabra." },
+      { id: 64, name: "kadabra", type1: "psychic", type2: "none", gen: 1, height: 1.3, weight: 56.5, tcgPrice: 12.00, riddle: "Carrego uma colher de prata que amplifica minhas ondas alfa e poderes psíquicos.", clue1: "Segura uma colher na mão.", clue2: "Evolui para Alakazam por troca." },
+      { id: 65, name: "alakazam", type1: "psychic", type2: "none", gen: 1, height: 1.5, weight: 48.0, tcgPrice: 90.00, riddle: "Meu cérebro nunca para de crescer e meu QI ultrapassa 5.000. Seguro duas colheres psíquicas.", clue1: "Mestre mental da Gen 1.", clue2: "Não esquece nada do que aprendeu." },
+      { id: 66, name: "machop", type1: "fighting", type2: "none", gen: 1, height: 0.8, weight: 19.5, tcgPrice: 3.00, riddle: "Treino levantando pedras pesadas todos os dias para aumentar meus músculos imensos.", clue1: "Lutador cinza pequenino.", clue2: "Evolui para Machoke." },
+      { id: 67, name: "machoke", type1: "fighting", type2: "none", gen: 1, height: 1.5, weight: 70.5, tcgPrice: 8.00, riddle: "Uso um cinto de contenção de força para controlar meu poder muscular devastador.", clue1: "Carrega móveis nas mudanças em Hoenn.", clue2: "Evolui por troca." },
+      { id: 68, name: "machamp", type1: "fighting", type2: "none", gen: 1, height: 1.6, weight: 130.0, tcgPrice: 65.00, riddle: "Com meus quatro braços poderosos, posso dar mil soco em apenas dois segundos.", clue1: "Lutador supremo de quatro braços.", clue2: "Evolução final do Machop." },
+      { id: 74, name: "geodude", type1: "rock", type2: "ground", gen: 1, height: 0.4, weight: 20.0, tcgPrice: 2.00, riddle: "Pareço uma pedra comum em trilhas montanhosas, mas uso meus braços para escalar.", clue1: "A rocha com braços.", clue2: "Pokémon principal do Brock." },
+      { id: 75, name: "graveler", type1: "rock", type2: "ground", gen: 1, height: 1.0, weight: 105.0, tcgPrice: 5.00, riddle: "Rolo pelas montanhas sem se importar com o que esmaga no caminho.", clue1: "Pedra rolante com 4 braços.", clue2: "Evolui para Golem por troca." },
+      { id: 76, name: "golem", type1: "rock", type2: "ground", gen: 1, height: 1.4, weight: 300.0, tcgPrice: 30.00, riddle: "Tenho uma carcaça de rocha tão resistente que nem dinamite consegue quebrar.", clue1: "Pedra gigante em forma de bola.", clue2: "Evolução final do Geodude." },
+      { id: 77, name: "ponyta", type1: "fire", type2: "none", gen: 1, height: 1.0, weight: 30.0, tcgPrice: 10.00, riddle: "Minha crina flamejante só queima quem eu não confio. Pulo prédios inteiros com facilidade.", clue1: "Cavalo de fogo de Kanto.", clue2: "Evolui no nível 40 para Rapidash." },
+      { id: 78, name: "rapidash", type1: "fire", type2: "none", gen: 1, height: 1.7, weight: 95.0, tcgPrice: 25.00, riddle: "Corro a mais de 240 km/h com minha crina de fogo brilhando como um meteoro.", clue1: "Unicórnio de fogo.", clue2: "Evolução da Ponyta." },
+      { id: 79, name: "slowpoke", type1: "water", type2: "psychic", gen: 1, height: 1.2, weight: 36.0, tcgPrice: 8.00, riddle: "Tão devagar e distraído que demora 5 minutos para sentir dor na cauda mordida.", clue1: "Pokémon rosa muito lento.", clue2: "Pescava usando a própria cauda." },
+      { id: 80, name: "slowbro", type1: "water", type2: "psychic", gen: 1, height: 1.6, weight: 78.5, tcgPrice: 22.00, riddle: "Quando um Shellder mordeu minha cauda, evoluí para esta forma bípede e despertei poderes.", clue1: "Tem um Shellder na cauda.", clue2: "Evolução do Slowpoke." },
+      { id: 81, name: "magnemite", type1: "electric", type2: "steel", gen: 1, height: 0.3, weight: 6.0, tcgPrice: 4.00, riddle: "Flutuo emitindo ondas eletromagnéticas e me prendo a linhas de alta tensão para comer eletricidade.", clue1: "Esfera de ferro com dois ímãs laterais e um olho.", clue2: "Ganhou o tipo Aço na Gen 2." },
+      { id: 82, name: "magneton", type1: "electric", type2: "steel", gen: 1, height: 1.0, weight: 60.0, tcgPrice: 12.00, riddle: "Três Magnemites unidos geram uma força magnética capaz de secar a umidade do ar ao redor.", clue1: "Junção de 3 unidades do Magnemite.", clue2: "Evolui para Magnezone na Gen 4." },
+      { id: 83, name: "farfetchd", type1: "normal", type2: "flying", gen: 1, height: 0.8, weight: 15.0, tcgPrice: 15.00, riddle: "Nunca saio de casa sem meu talo de alho-poró, que uso como espada afiada para combates.", clue1: "O pato que carrega um vegetal.", clue2: "Ganhou uma evolução em Galar (Sirfetch'd)." },
+      { id: 86, name: "seel", type1: "water", type2: "none", gen: 1, height: 1.1, weight: 90.0, tcgPrice: 3.00, riddle: "Coberto por pelo azul-claro, adoro nadar em águas congelantes e gelo polar.", clue1: "Foca de água doce e salgada.", clue2: "Evolui para Dewgong." },
+      { id: 87, name: "dewgong", type1: "water", type2: "ice", gen: 1, height: 1.7, weight: 120.0, tcgPrice: 12.00, riddle: "Meu corpo aerodinâmico branco desliza pela neve e oceanos gelados feito um torpedo.", clue1: "Evolução do Seel.", clue2: "Sereia marinha de gelo." },
+      { id: 92, name: "gastly", type1: "ghost", type2: "poison", gen: 1, height: 1.3, weight: 0.1, tcgPrice: 10.00, riddle: "Composto por 95% de gás venenoso, posso envolver meus oponentes e sufocá-los.", clue1: "Apenas uma cabeça gasosa negra.", clue2: "Evolui para Haunter." },
+      { id: 93, name: "haunter", type1: "ghost", type2: "poison", gen: 1, height: 1.6, weight: 0.1, tcgPrice: 15.00, riddle: "Lambo minhas vítimas com minha língua espectral para roubar sua força vital.", clue1: "Fantasma com mãos flutuantes desconectadas.", clue2: "Evolui para Gengar por troca." },
+      { id: 94, name: "gengar", type1: "ghost", type2: "poison", gen: 1, height: 1.5, weight: 40.5, tcgPrice: 85.00, riddle: "Escondo-me nas sombras à noite e adoro pregar peças assustadoras nos viajantes.", clue1: "Evolução do Haunter por troca.", clue2: "Sorriso largo e corpo roxo." },
+      { id: 95, name: "onix", type1: "rock", type2: "ground", gen: 1, height: 8.8, weight: 210.0, tcgPrice: 20.00, riddle: "Uma serpente de pedra gigante que cavou fundo no chão até seu corpo ficar duro como diamante.", clue1: "Pokémon de pedra gigante do Brock.", clue2: "Evolui para Steelix com Metal Coat." },
+      { id: 98, name: "krabby", type1: "water", type2: "none", gen: 1, height: 0.4, weight: 6.5, tcgPrice: 3.00, riddle: "Minhas garras quebram se eu aplicar muita força, mas elas se regeneram rapidamente.", clue1: "Caranguejo de Kanto.", clue2: "Ash pegou um na praia." },
+      { id: 99, name: "kingler", type1: "water", type2: "none", gen: 1, height: 1.3, weight: 60.0, tcgPrice: 18.00, riddle: "Uma das minhas garras cresceu desproporcionalmente e tem 10.000 cavalos de força.", clue1: "Evolução do Krabby.", clue2: "Garra gigante devastadora." },
+      { id: 100, name: "voltorb", type1: "electric", type2: "none", gen: 1, height: 0.5, weight: 10.4, tcgPrice: 4.00, riddle: "Pareço exatamente uma Pokébola comum e explodo ao menor sinal de toque.", clue1: "Encontrado em usinas elétricas.", clue2: "Aprende Self-Destruct." },
+      { id: 101, name: "electrode", type1: "electric", type2: "none", gen: 1, height: 1.2, weight: 66.6, tcgPrice: 12.00, riddle: "Rolo em altas velocidades alimentando-me de eletricidade da atmosfera para explodir.", clue1: "Pokébola invertida e sorridente.", clue2: "Evolução do Voltorb." },
+      { id: 104, name: "cubone", type1: "ground", type2: "none", gen: 1, height: 0.4, weight: 6.5, tcgPrice: 14.00, riddle: "Uso o crânio da minha falecida mãe como capacete e choro na solidão da lua cheia.", clue1: "Conhecido como o Pokémon solitário.", clue2: "Ataca usando um osso na mão." },
+      { id: 105, name: "marowak", type1: "ground", type2: "none", gen: 1, height: 1.0, weight: 45.0, tcgPrice: 22.00, riddle: "Superou sua dor emocional e endureceu seu coração, usando seu osso como bumerangue mortal.", clue1: "Evolução do Cubone.", clue2: "Mestre no golpe Bonemerang." },
+      { id: 106, name: "hitmonlee", type1: "fighting", type2: "none", gen: 1, height: 1.5, weight: 49.8, tcgPrice: 20.00, riddle: "Conhecido como o Mestre dos Chutes, minhas pernas se estendem como mola.", clue1: "Inspirado em Bruce Lee.", clue2: "Evolução do Tyrogue focado em Ataque." },
+      { id: 107, name: "hitmonchan", type1: "fighting", type2: "none", gen: 1, height: 1.4, weight: 50.2, tcgPrice: 20.00, riddle: "Mestre dos Socos, dou golpes tão rápidos que são invisíveis a olho nu.", clue1: "Inspirado em Jackie Chan.", clue2: "Usa luvas de boxe vermelhas." },
+      { id: 109, name: "koffing", type1: "poison", type2: "none", gen: 1, height: 0.6, weight: 1.0, tcgPrice: 5.00, riddle: "Corpo esférico flutuante cheio de gases tóxicos e inflamáveis que explodem com facilidade.", clue1: "Parceiro clássico do James da Equipe Rocket.", clue2: "Símbolo de caveira no peito." },
+      { id: 110, name: "weezing", type1: "poison", type2: "none", gen: 1, height: 1.2, weight: 9.5, tcgPrice: 18.00, riddle: "Duas esferas conectadas que misturam gases poluentes para criar os piores odores.", clue1: "Evolução do Koffing.", clue2: "Possui uma forma de cartola em Galar." },
+      { id: 111, name: "rhyhorn", type1: "ground", type2: "rock", gen: 1, height: 1.0, weight: 115.0, tcgPrice: 6.00, riddle: "Ossos 1000 vezes mais duros que os de humanos. Corre em linha reta destruindo tudo.", clue1: "Rinoceronte acorrentado por rochas.", clue2: "Evolui para Rhydon." },
+      { id: 112, name: "rhydon", type1: "ground", type2: "rock", gen: 1, height: 1.9, weight: 120.0, tcgPrice: 28.00, riddle: "Primeiro Pokémon criado na história dos jogos! Seu chifre broca perfura rocha sólida.", clue1: "Primeiro índice do index do banco da GameFreak.", clue2: "Evoluição do Rhyhorn." },
+      { id: 113, name: "chansey", type1: "normal", type2: "none", gen: 1, height: 1.1, weight: 34.6, tcgPrice: 35.00, riddle: "Carrego um ovo nutritivo em minha bolsa e o compartilho generosamente com feridos.", clue1: "Enfermeira do Centro Pokémon no anime.", clue2: "Tem quantidade absurda de HP." },
+      { id: 116, name: "horsea", type1: "water", type2: "none", gen: 1, height: 0.4, weight: 8.0, tcgPrice: 4.00, riddle: "Cavalo-marinho que cospo tinta preta para se esconder de predadores marinhos.", clue1: "Gosta de desenhar com tinta na água.", clue2: "Evolui para Seadra." },
+      { id: 117, name: "seadra", type1: "water", type2: "none", gen: 1, height: 1.2, weight: 25.0, tcgPrice: 10.00, riddle: "Seus espinhos venenosos cobrem o corpo e ele nada de costas com facilidade.", clue1: "Evolução do Horsea.", clue2: "Evolui para Kingdra trocando com Dragon Scale." },
+      { id: 120, name: "staryu", type1: "water", type2: "none", gen: 1, height: 0.8, weight: 34.5, tcgPrice: 5.00, riddle: "Estrela do mar cujo núcleo vermelho central brilha como uma joia sob a água.", clue1: "Parceiro de Misty.", clue2: "Evolui com Pedra da Água." },
+      { id: 121, name: "starmie", type1: "water", type2: "psychic", gen: 1, height: 1.1, weight: 80.0, tcgPrice: 30.00, riddle: "Seu núcleo brilha em sete cores e é apelidado de a joia do mar.", clue1: "Estrela de dez pontas giratória.", clue2: "Tipo Água e Psíquico." },
+      { id: 123, name: "scyther", type1: "bug", type2: "flying", gen: 1, height: 1.5, weight: 56.0, tcgPrice: 40.00, riddle: "MANTIS ninja com lâminas afiadas nas mãos que cortam árvores espessas com um golpe.", clue1: "Verde rápido com foices nas mãos.", clue2: "Evolui para Scizor." },
+      { id: 129, name: "magikarp", type1: "water", type2: "none", gen: 1, height: 0.9, weight: 10.0, tcgPrice: 5.00, riddle: "Incapaz de batalhar direito, apenas debate-se na água até alcançar o nível 20.", clue1: "Famoso pelo golpe Splash.", clue2: "Peixe fraco que vira um monstro." },
+      { id: 130, name: "gyarados", type1: "water", type2: "flying", gen: 1, height: 6.5, weight: 235.0, tcgPrice: 65.00, riddle: "Evoluo de um peixe inofensivo para uma serpente marinha cheia de fúria.", clue1: "Evolução do Magikarp no nível 20.", clue2: "Conhecido como o Pokémon Atrocidade." },
+      { id: 131, name: "lapras", type1: "water", type2: "ice", gen: 1, height: 2.5, weight: 220.0, tcgPrice: 75.00, riddle: "Transporto pessoas nas minhas costas pelo oceano e canto melodias encantadoras.", clue1: "O meio de transporte aquático lendário de Kanto.", clue2: "Tipo Água e Gelo." },
+      { id: 132, name: "ditto", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 4.0, tcgPrice: 30.00, riddle: "Posso reorganizar minha estrutura celular para me transformar em qualquer Pokémon.", clue1: "Massa rosa transformista.", clue2: "Usa apenas o golpe Transform." },
+      { id: 133, name: "eevee", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 6.5, tcgPrice: 45.00, riddle: "Possuo um código genético instável que me permite evoluir em muitas formas diferentes.", clue1: "Possui o maior número de evoluções.", clue2: "Pokémon da categoria Evolução." },
+      { id: 134, name: "vaporeon", type1: "water", type2: "none", gen: 1, height: 1.0, weight: 29.0, tcgPrice: 55.00, riddle: "Minha estrutura celular é semelhante à da água, permitindo que eu me dissolva no mar.", clue1: "Evolução de Água do Eevee.", clue2: "Usa Pedra da Água." },
+      { id: 135, name: "jolteon", type1: "electric", type2: "none", gen: 1, height: 0.8, weight: 24.5, tcgPrice: 55.00, riddle: "Acumulo íons negativos nos meus pelos pontiagudos para disparar raios de 10.000 volts.", clue1: "Evolução Elétrica do Eevee.", clue2: "Usa Pedra do Trovão." },
+      { id: 136, name: "flareon", type1: "fire", type2: "none", gen: 1, height: 0.9, weight: 25.0, tcgPrice: 50.00, riddle: "Guardo ar aquecido em minha bolsa interna de fogo a mais de 1.700 graus.", clue1: "Evolução de Fogo do Eevee.", clue2: "Usa Pedra do Fogo." },
+      { id: 138, name: "omanyte", type1: "rock", type2: "water", gen: 1, height: 0.4, weight: 7.5, tcgPrice: 12.00, riddle: "Fóssil ressuscitado que nadava nos mares pré-históricos usando seus 10 tentáculos.", clue1: "Revivido do Helix Fossil.", clue2: "Tipo Pedra e Água." },
+      { id: 139, name: "omastar", type1: "rock", type2: "water", gen: 1, height: 1.0, weight: 35.0, tcgPrice: 25.00, riddle: "Seu bico afiado conseguia quebrar a carcaça de qualquer presa na pré-história.", clue1: "Evolução do Omanyte.", clue2: "Carcaça espinhosa circular." },
+      { id: 140, name: "kabuto", type1: "rock", type2: "water", gen: 1, height: 0.5, weight: 11.5, tcgPrice: 12.00, riddle: "Fóssil que se escondia no fundo do mar com olhos vermelhos nas costas.", clue1: "Revivido do Dome Fossil.", clue2: "Trilobita réptil." },
+      { id: 141, name: "kabutops", type1: "rock", type2: "water", gen: 1, height: 1.3, weight: 40.5, tcgPrice: 35.00, riddle: "Caçador pré-histórico perfeito com foices afiadas nas mãos para fatiar presas.", clue1: "Evolução do Kabuto.", clue2: "Predador esquelético aquático." },
+      { id: 142, name: "aerodactyl", type1: "rock", type2: "flying", gen: 1, height: 1.8, weight: 59.0, tcgPrice: 60.00, riddle: "Fóssil réptil voador com garras afiadas e mandíbula cheia de dentes de serra.", clue1: "Revivido do Old Amber.", clue2: "O pterodáctilo de Kanto." },
+      { id: 143, name: "snorlax", type1: "normal", type2: "none", gen: 1, height: 2.1, weight: 460.0, tcgPrice: 50.00, riddle: "Só acordo para comer mais de 400 quilos de comida antes de voltar a dormir.", clue1: "Bloqueia caminhos em Kanto.", clue2: "Usa uma Pokéflauta para ser acordado." },
+      { id: 144, name: "articuno", type1: "ice", type2: "flying", gen: 1, height: 1.7, weight: 55.4, tcgPrice: 150.00, riddle: "Passaro lendário de gelo que congela o ar ao redor enquanto voa com cauda elegante.", clue1: "Primeira ave lendária de Kanto.", clue2: "Habita nas Seafoam Islands." },
+      { id: 145, name: "zapdos", type1: "electric", type2: "flying", gen: 1, height: 1.6, weight: 52.6, tcgPrice: 160.00, riddle: "Passaro lendário que surge de nuvens de tempestade soltando relâmpagos potentes.", clue1: "Segunda ave lendária de Kanto.", clue2: "Habita a Power Plant." },
+      { id: 146, name: "moltres", type1: "fire", type2: "flying", gen: 1, height: 2.0, weight: 60.0, tcgPrice: 150.00, riddle: "Passaro lendário envolto em chamas brilhantes que traz a primavera por onde voa.", clue1: "Terceira ave lendária de Kanto.", clue2: "Habita no Victory Road / Mt. Ember." },
+      { id: 147, name: "dratini", type1: "dragon", type2: "none", gen: 1, height: 1.8, weight: 3.3, tcgPrice: 20.00, riddle: "Pequena serpente mística de dragão que cresce continuamente trocando de pele.", clue1: "Encontrado no Safari Zone.", clue2: "Evolui para Dragonair." },
+      { id: 148, name: "dragonair", type1: "dragon", type2: "none", gen: 1, height: 4.0, weight: 16.5, tcgPrice: 35.00, riddle: "Serpente azul elegante que acumula energia mística no cristal da sua cauda.", clue1: "Evolução do Dratini.", clue2: "Pode alterar o clima da região." },
+      { id: 149, name: "dragonite", type1: "dragon", type2: "flying", gen: 1, height: 2.2, weight: 210.0, tcgPrice: 130.00, riddle: "Um dragão caridoso que dá voltas ao globo em 16 horas salvando marinheiros perdidos.", clue1: "O primeiro pseudolendário da história.", clue2: "Evolução final do Dratini." },
+      { id: 150, name: "mewtwo", type1: "psychic", type2: "none", gen: 1, height: 2.0, weight: 122.0, tcgPrice: 210.00, riddle: "Fui criado em laboratório a partir do DNA de outro Pokémon lendário.", clue1: "Criado em Cinnabar Island.", clue2: "O lendário psíquico supremo de Kanto." },
+      { id: 151, name: "mew", type1: "psychic", type2: "none", gen: 1, height: 0.4, weight: 4.0, tcgPrice: 190.00, riddle: "Dizem que possuo o código genético de todos os Pokémons e posso me transformar em qualquer um.", clue1: "Pokémon Mítico Nº 151.", clue2: "Pequeno, rosado e flutuante." },
+      { id: 152, name: "chikorita", type1: "grass", type2: "none", gen: 1, height: 0.9, weight: 6.4, tcgPrice: 12.00, riddle: "Uso a folha na minha cabeça para verificar a temperatura e a umidade do ar.", clue1: "Inicial de Planta de Johto (Gen 2).", clue2: "Evolui para Bayleef." },
+      { id: 153, name: "bayleef", type1: "grass", type2: "none", gen: 1, height: 1.2, weight: 15.8, tcgPrice: 8.00, riddle: "O cheiro de especiarias vindo do meu colar de folhas estimula quem o sente.", clue1: "Evolução da Chikorita.", clue2: "Dinossauro folhoso de Johto." },
+      { id: 154, name: "meganium", type1: "grass", type2: "none", gen: 1, height: 1.8, weight: 100.5, tcgPrice: 40.00, riddle: "O hálito das minhas pétalas acalma o espírito de qualquer combate e revive plantas mortas.", clue1: "Forma final da Chikorita.", clue2: "Grande dinossauro rosa e verde." },
+      { id: 155, name: "cyndaquil", type1: "fire", type2: "none", gen: 2, height: 0.5, weight: 7.9, tcgPrice: 18.00, riddle: "Tímido, protejo-me soltando chamas intensas pelas costas quando estou assustado.", clue1: "Inicial de Fogo de Johto (Gen 2).", clue2: "Evolui para Quilava." },
+      { id: 156, name: "quilava", type1: "fire", type2: "none", gen: 2, height: 0.9, weight: 19.0, tcgPrice: 10.00, riddle: "Cobre-se de chamas violentas antes de atacar com investidas devastadoras.", clue1: "Evolução do Cyndaquil.", clue2: "Fogo na cabeça e no traseiro." },
+      { id: 157, name: "typhlosion", type1: "fire", type2: "none", gen: 2, height: 1.7, weight: 79.5, tcgPrice: 70.00, riddle: "Quando sua fúria chega ao auge, fica tão quente que tudo ao redor entra em combustão.", clue1: "Forma final do Cyndaquil.", clue2: "Aprende Eruption." },
+      { id: 158, name: "totodile", type1: "water", type2: "none", gen: 2, height: 0.6, weight: 9.5, tcgPrice: 15.00, riddle: "Muito brincalhão, morde tudo que vê pela frente com suas mandíbulas potentes.", clue1: "Inicial de Água de Johto (Gen 2).", clue2: "Jacaré azul agitado." },
+      { id: 159, name: "croconaw", type1: "water", type2: "none", gen: 2, height: 1.1, weight: 25.0, tcgPrice: 8.00, riddle: "Uma vez que morde algo com suas 48 presas, não solta até o dente cair.", clue1: "Evolução do Totodile.", clue2: "Possui padrão de caverna no corpo." },
+      { id: 160, name: "feraligatr", type1: "water", type2: "none", gen: 2, height: 2.3, weight: 88.8, tcgPrice: 60.00, riddle: "Intimida seus inimigos abrindo sua bocal imensa antes de esmagá-los no chão.", clue1: "Forma final do Totodile.", clue2: "Jacaré gigante bípede de Johto." },
+      { id: 161, name: "sentret", type1: "normal", type2: "none", gen: 2, height: 0.8, weight: 6.0, tcgPrice: 2.00, riddle: "Apoia-se na cauda para vigiar o redor e alertar o bando contra predadores.", clue1: "Esquilo/Suricato de Johto.", clue2: "Evolui para Furret." },
+      { id: 162, name: "furret", type1: "normal", type2: "none", gen: 2, height: 1.8, weight: 32.5, tcgPrice: 10.00, riddle: "Corpo incrivelmente longo e magro, perfeito para entrar em buracos estreitos.", clue1: "Famoso pelo meme de caminhada.", clue2: "Evolução do Sentret." },
+      { id: 165, name: "ledyba", type1: "bug", type2: "flying", gen: 2, height: 1.0, weight: 10.8, tcgPrice: 2.00, riddle: "Joaninha muito tímida que só se sente segura quando está reunida em grandes grupos.", clue1: "Joaninha vermelha da Gen 2.", clue2: "Evolui para Ledian." },
+      { id: 167, name: "spinarak", type1: "bug", type2: "poison", gen: 2, height: 0.5, weight: 8.5, tcgPrice: 2.00, riddle: "Tece teias duras e finas e espera pacientemente no escuro por presas desavisadas.", clue1: "Aranha verde da Gen 2.", clue2: "Rosto estampado no seu abdômen." },
+      { id: 172, name: "pichu", type1: "electric", type2: "none", gen: 2, height: 0.3, weight: 2.0, tcgPrice: 25.00, riddle: "Ainda não sabe controlar sua energia elétrica e choque a si mesmo quando ri.", clue1: "A bebê-evolução do Pikachu.", clue2: "Evolui por amizade." },
+      { id: 173, name: "cleffa", type1: "fairy", type2: "none", gen: 2, height: 0.4, weight: 3.0, tcgPrice: 10.00, riddle: "Com formato de estrela, dizem que chega à Terra a bordo de meteoros brilhantes.", clue1: "Bebê-evolução da Clefairy.", clue2: "Tipo Fada fofinho." },
+      { id: 174, name: "igglybuff", type1: "normal", type2: "fairy", gen: 2, height: 0.3, weight: 1.0, tcgPrice: 8.00, riddle: "Seu corpo macio quica sem parar quando começa a rolar por uma ladeira.", clue1: "Bebê-evolução da Jigglypuff.", clue2: "Esfera rosa elástica." },
+      { id: 175, name: "togepi", type1: "fairy", type2: "none", gen: 2, height: 0.3, weight: 1.5, tcgPrice: 35.00, riddle: "Usa a casca do ovo onde nasceu como armadura e espalha felicidade para todos.", clue1: "Ovo famoso carregado pela Misty.", clue2: "Evolui para Togetic com amizade." },
+      { id: 179, name: "mareep", type1: "electric", type2: "none", gen: 2, height: 0.6, weight: 7.8, tcgPrice: 5.00, riddle: "Lã macia que acumula eletricidade estática. A esfera na cauda brilha na escuridão.", clue1: "Ovelha elétrica de Johto.", clue2: "Evolui para Flaaffy." },
+      { id: 181, name: "ampharos", type1: "electric", type2: "none", gen: 2, height: 1.4, weight: 61.5, tcgPrice: 45.00, riddle: "Sua luz na cauda é tão forte que costuma ser usada como farol para navios no mar.", clue1: "Evolução final do Mareep.", clue2: "Tem uma Mega Evolução cheia de cabelos." },
+      { id: 183, name: "marill", type1: "water", type2: "fairy", gen: 2, height: 0.4, weight: 8.5, tcgPrice: 6.00, riddle: "Sua cauda em forma de bola flutua na água agindo como uma bóia de resgate.", clue1: "Conhecido nos anos 90 como Pikablu.", clue2: "Rato de água azul." },
+      { id: 184, name: "azumarill", type1: "water", type2: "fairy", gen: 2, height: 0.8, weight: 28.5, tcgPrice: 20.00, riddle: "Sua audição perfeita permite identificar peixes mesmo em rios barrentos e agitados.", clue1: "Evolução do Marill.", clue2: "Muito forte com a habilidade Huge Power." },
+      { id: 185, name: "sudowoodo", type1: "rock", type2: "none", gen: 2, height: 1.2, weight: 38.0, tcgPrice: 15.00, riddle: "Finge ser uma árvore para não ser atacado, mas odeia água e corre se chover.", clue1: "Bloqueia estradas em Johto.", clue2: "Tipo Pedra puro apesar de parecer planta." },
+      { id: 196, name: "espeon", type1: "psychic", type2: "none", gen: 2, height: 0.9, weight: 26.5, tcgPrice: 120.00, riddle: "Uso os pelos finos do meu corpo para prever as correntes de ar e os movimentos do inimigo.", clue1: "Evolução diurna do Eevee por amizade.", clue2: "Gato psíquico rosa/lilás." },
+      { id: 197, name: "umbreon", type1: "dark", type2: "none", gen: 2, height: 1.0, weight: 27.0, tcgPrice: 140.00, riddle: "Os anéis no meu corpo brilham no escuro quando sinto a energia da lua cheia.", clue1: "Evolução noturna do Eevee com felicidade.", clue2: "Tipo Sombrio introduzido em Johto." },
+      { id: 201, name: "unown", type1: "psychic", type2: "none", gen: 2, height: 0.5, weight: 5.0, tcgPrice: 8.00, riddle: "Tenho formato de letras do alfabeto e vivemos em ruínas antigas formando palavras.", clue1: "Pokémon símbolo misterioso.", clue2: "Possui 28 formas variadas." },
+      { id: 202, name: "wobbuffet", type1: "psychic", type2: "none", gen: 2, height: 1.3, weight: 28.5, tcgPrice: 12.00, riddle: "Nunca ataca primeiro, mas devolve o dobro de dano recebido usando Counter ou Mirror Coat.", clue1: "Sempre se esconde para proteger sua cauda negra.", clue2: "Parceiro cômico de Jessie na Equipe Rocket." },
+      { id: 212, name: "scizor", type1: "bug", type2: "steel", gen: 2, height: 1.8, weight: 118.0, tcgPrice: 110.00, riddle: "Corpo coberto por uma armadura de aço vermelho com garras com formato de olhos intimidadores.", clue1: "Evolução do Scyther com Metal Coat.", clue2: "Tipo Inseto e Aço." },
+      { id: 214, name: "heracross", type1: "bug", type2: "fighting", gen: 2, height: 1.5, weight: 54.0, tcgPrice: 35.00, riddle: "Adora o néctar doce das árvores e arremessa oponentes 100 vezes mais pesados pelo chifre.", clue1: "Besouro besouro-unicórnio de Johto.", clue2: "Grande lutador de Inseto." },
+      { id: 215, name: "sneasel", type1: "dark", type2: "ice", gen: 2, height: 0.9, weight: 28.0, tcgPrice: 18.00, riddle: "Escala árvores à noite usando garras afiadas e rouba ovos de Pidgey para comer.", clue1: "Gato-weasel ágil da neve.", clue2: "Evolui para Weavile." },
+      { id: 225, name: "delibird", type1: "ice", type2: "flying", gen: 2, height: 0.9, weight: 16.0, tcgPrice: 10.00, riddle: "Carrega comida embrulhada em sua cauda que parece um saco de presentes e divide com perdidos.", clue1: "Pinguim Papai Noel.", clue2: "Conhecido pelo golpe Present." },
+      { id: 228, name: "houndour", type1: "dark", type2: "fire", gen: 2, height: 0.6, weight: 10.8, tcgPrice: 8.00, riddle: "Comunica-se com a matilha por meio de uivos assustadores para encurralar suas presas.", clue1: "Cão das sombras com ossos no corpo.", clue2: "Evolui para Houndoom." },
+      { id: 229, name: "houndoom", type1: "dark", type2: "fire", gen: 2, height: 1.4, weight: 35.0, tcgPrice: 45.00, riddle: "As feridas causadas pelo fogo das suas queimaduras jamais param de doer.", clue1: "Cão infernal com chifres curvos.", clue2: "Evolução do Houndour." },
+      { id: 243, name: "raikou", type1: "electric", type2: "none", gen: 2, height: 1.9, weight: 178.0, tcgPrice: 160.00, riddle: "Cão lendário do trovão que corre pelo continente soltando rugidos como trovões.", clue1: "Um dos cães lendários de Johto.", clue2: "Nuvem de chuva nas costas." },
+      { id: 244, name: "entei", type1: "fire", type2: "none", gen: 2, height: 2.1, weight: 198.0, tcgPrice: 165.00, riddle: "Dizem que um novo Entei nasce a cada vez que um vulcão entra em erupção no mundo.", clue1: "Cão lendário do fogo.", clue2: "Protagonista do terceiro filme." },
+      { id: 245, name: "suicune", type1: "water", type2: "none", gen: 2, height: 2.0, weight: 187.0, tcgPrice: 180.00, riddle: "Incorporação dos ventos do norte, purifica qualquer água suja por onde pisa.", clue1: "Mascote do Pokémon Crystal.", clue2: "Cão lendário da água." },
+      { id: 246, name: "larvitar", type1: "rock", type2: "ground", gen: 2, height: 0.6, weight: 72.0, tcgPrice: 15.00, riddle: "Nasce nas profundezas da terra e precisa devorar uma montanha de terra para crescer.", clue1: "Forma base do Tyranitar.", clue2: "Tipo Pedra e Terra." },
+      { id: 248, name: "tyranitar", type1: "rock", type2: "dark", gen: 2, height: 2.0, weight: 202.0, tcgPrice: 95.00, riddle: "Minha força é tão devastadora que posso derrubar uma montanha inteira para fazer meu ninho.", clue1: "Pseudolendário da Gen 2.", clue2: "Tipo Pedra e Sombrio." },
+      { id: 249, name: "lugia", type1: "psychic", type2: "flying", gen: 2, height: 5.2, weight: 216.0, tcgPrice: 280.00, riddle: "Aposto minhas asas no fundo do oceano porque um leve bater delas pode causar tempestades de 40 dias.", clue1: "O Guardião dos Mares de Johto.", clue2: "Mascote do jogo Pokémon Silver." },
+      { id: 250, name: "ho-oh", type1: "fire", type2: "flying", gen: 2, height: 3.8, weight: 199.0, tcgPrice: 270.00, riddle: "Fênix lendária cujas asas reluzem nas sete cores do arco-íris ao voar.", clue1: "Mascote do Pokémon Gold.", clue2: "Aparece no 1º episódio para o Ash." },
+      { id: 251, name: "celebi", type1: "psychic", type2: "grass", gen: 2, height: 0.6, weight: 5.0, tcgPrice: 150.00, riddle: "Guardião da floresta que possui a capacidade de viajar livremente pelo tempo.", clue1: "Pokémon mítico de Johto.", clue2: "Aparece quando a paz reina." },
+      { id: 252, name: "treecko", type1: "grass", type2: "none", gen: 3, height: 0.5, weight: 5.0, tcgPrice: 15.00, riddle: "Escala superfícies verticais com seus pés especiais e mantém a calma em qualquer situação.", clue1: "Inicial de Planta de Hoenn (Gen 3).", clue2: "Gosta de mastigar um ramo no bico." },
+      { id: 255, name: "torchic", type1: "fire", type2: "none", gen: 3, height: 0.4, weight: 2.5, tcgPrice: 15.00, riddle: "Guarda um saco de fogo no seu estômago e abraçá-lo traz um calor reconfortante.", clue1: "Inicial de Fogo de Hoenn (Gen 3).", clue2: "Pintinho de fogo que evolui para Blaziken." },
+      { id: 258, name: "mudkip", type1: "water", type2: "none", gen: 3, height: 0.4, weight: 7.6, tcgPrice: 18.00, riddle: "Usa a barbatana na cabeça para sentir as correntes de água e terra sem precisar olhar.", clue1: "Inicial de Água de Hoenn (Gen 3).", clue2: "So i herd u liek mudkips." },
+      { id: 280, name: "ralts", type1: "psychic", type2: "fairy", gen: 3, height: 0.4, weight: 6.6, tcgPrice: 12.00, riddle: "Sente as emoções de pessoas e Pokémons através dos seus chifres vermelhos.", clue1: "Capturado pelo Wally no tutorial de RSE.", clue2: "Evolui para Kirlia." },
+      { id: 282, name: "gardevoir", type1: "psychic", type2: "fairy", gen: 3, height: 1.6, weight: 48.4, tcgPrice: 70.00, riddle: "Tenho o poder de prever o futuro e criar pequenos buracos negros para proteger meu treinador.", clue1: "Evolução final do Ralts.", clue2: "Tipo Psíquico e Fada." },
+      { id: 302, name: "sableye", type1: "dark", type2: "ghost", gen: 3, height: 0.5, weight: 11.0, tcgPrice: 20.00, riddle: "Alimenta-se de gemas preciosas no escuro das cavernas até seus olhos virarem joias.", clue1: "Sem fraquezas até a Gen 6 chegar.", clue2: "Tipo Sombrio e Fantasma." },
+      { id: 304, name: "aron", type1: "steel", type2: "rock", gen: 3, height: 0.4, weight: 60.0, tcgPrice: 6.00, riddle: "Come minério de ferro das montanhas para construir sua armadura de aço corporal.", clue1: "Pequeno monstro metálico de Hoenn.", clue2: "Evolui para Lairon." },
+      { id: 330, name: "flygon", type1: "ground", type2: "dragon", gen: 3, height: 2.0, weight: 82.0, tcgPrice: 50.00, riddle: "Apelidado de O Espírito do Deserto, esconde-se em tempestades de areia que cria com as asas.", clue1: "Dragão místico de Hoenn.", clue2: "Olhos vermelhos protetores de areia." },
+      { id: 350, name: "milotic", type1: "water", type2: "none", gen: 3, height: 6.2, weight: 162.0, tcgPrice: 85.00, riddle: "Considerado por muitos o Pokémon mais belo do mundo, acalma os corações cheios de ódio.", clue1: "Evolui de um Feebas feio.", clue2: "Serpente marinha arco-íris." },
+      { id: 373, name: "salamence", type1: "dragon", type2: "flying", gen: 3, height: 1.5, weight: 102.6, tcgPrice: 110.00, riddle: "Seu desejo incontrolável de voar fez com que asas vermelhas brotassem no seu corpo.", clue1: "Pseudolendário de Hoenn.", clue2: "Evolução final do Bagon." },
+      { id: 376, name: "metagross", type1: "steel", type2: "psychic", gen: 3, height: 1.6, weight: 550.0, tcgPrice: 120.00, riddle: "Formado pela fusão de quatro Beldums, tem quatro cérebros e supera supercomputadores.", clue1: "O robô psíquico de Steven Stone.", clue2: "Pseudolendário de Aço e Psíquico." },
+      { id: 382, name: "kyogre", type1: "water", type2: "none", gen: 3, height: 4.5, weight: 352.0, tcgPrice: 290.00, riddle: "Lendário que expandiu os oceanos com tempestades torrenciais na antiguidade.", clue1: "Mascote de Pokémon Sapphire.", clue2: "Rival supremo do Groudon." },
+      { id: 383, name: "groudon", type1: "ground", type2: "none", gen: 3, height: 3.5, weight: 950.0, tcgPrice: 290.00, riddle: "Lendário que criou os continentes usando seu calor extremo para evaporar águas.", clue1: "Mascote de Pokémon Ruby.", clue2: "Titã da terra de Hoenn." },
+      { id: 384, name: "rayquaza", type1: "dragon", type2: "flying", gen: 3, height: 7.0, weight: 206.5, tcgPrice: 320.00, riddle: "Vivo na camada de ozônio há milhões de anos e acalmo a fúria de Kyogre e Groudon.", clue1: "Mascote do Pokémon Emerald.", clue2: "Dragão verde dos céus de Hoenn." },
+      { id: 387, name: "turtwig", type1: "grass", type2: "none", gen: 4, height: 0.4, weight: 10.2, tcgPrice: 12.00, riddle: "Seu casco feito de terra fica úmido se o Pokémon estiver saudável.", clue1: "Inicial de Planta de Sinnoh (Gen 4).", clue2: "Tartaruguinha com folha na cabeça." },
+      { id: 390, name: "chimchar", type1: "fire", type2: "none", gen: 4, height: 0.5, weight: 6.2, tcgPrice: 15.00, riddle: "Muito ágil, apaga sua cauda flamejante na hora de dormir para não incendiar a floresta.", clue1: "Inicial de Fogo de Sinnoh (Gen 4).", clue2: "Macaquinho de fogo famoso do Ash." },
+      { id: 393, name: "piplup", type1: "water", type2: "none", gen: 4, height: 0.4, weight: 5.2, tcgPrice: 15.00, riddle: "Orgulhoso, detesta aceitar comida de humanos e cai com frequência devido à sua caminhada.", clue1: "Inicial de Água de Sinnoh (Gen 4).", clue2: "Pinguim azul parceiro da Dawn." },
+      { id: 448, name: "lucario", type1: "fighting", type2: "steel", gen: 4, height: 1.2, weight: 54.0, tcgPrice: 150.00, riddle: "Consegue ler a Aura de todos os seres vivos para prever movimentos e ver pensamentos.", clue1: "Mascote do filme 'Lucario e o Mistério de Mew'.", clue2: "Lutador com espinhos de Aço no peito." },
+      { id: 483, name: "dialga", type1: "steel", type2: "dragon", gen: 4, height: 5.4, weight: 683.0, tcgPrice: 250.00, riddle: "Dizem que o tempo começou a fluir quando este Pokémon lendário nasceu.", clue1: "Mascote do Pokémon Diamond.", clue2: "Controlador do Tempo em Sinnoh." },
+      { id: 484, name: "palkia", type1: "water", type2: "dragon", gen: 4, height: 4.2, weight: 336.0, tcgPrice: 250.00, riddle: "Possui a habilidade mística de distorcer o espaço ao seu bel-prazer.", clue1: "Mascote do Pokémon Pearl.", clue2: "Controlador do Espaço em Sinnoh." },
+      { id: 487, name: "giratina", type1: "ghost", type2: "dragon", gen: 4, height: 4.5, weight: 750.0, tcgPrice: 280.00, riddle: "Banido para o Mundo Distorcido devido à sua violência descontrolada.", clue1: "Mascote do Pokémon Platinum.", clue2: "Senhor do Mundo Invertido." },
+      { id: 493, name: "arceus", type1: "normal", type2: "none", gen: 4, height: 3.2, weight: 320.0, tcgPrice: 400.00, riddle: "Diz a mitologia que emergiu de um ovo antes mesmo do próprio universo existir.", clue1: "O deus criador de todo o universo Pokémon.", clue2: "Pode mudar de tipo usando Placas." }
+    ];
+
+    // Sound Engine (Tone.js) - 8-bit style sounds
+    let soundEnabled = true;
+    let synth = null;
+
+    function initSynth() {
+      if (!synth && typeof Tone !== 'undefined') {
+        synth = new Tone.Synth({
+          oscillator: { type: 'square' },
+          envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 }
+        }).toDestination();
+      }
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      try {
+        initSynth();
+        if (!synth) return;
+        const now = Tone.now();
+        if (type === 'correct') {
+          synth.triggerAttackRelease('C5', '16n', now);
+          synth.triggerAttackRelease('G5', '8n', now + 0.1);
+        } else if (type === 'wrong') {
+          synth.triggerAttackRelease('C3', '8n', now);
+        } else if (type === 'win') {
+          synth.triggerAttackRelease('G4', '8n', now);
+          synth.triggerAttackRelease('C5', '8n', now + 0.15);
+          synth.triggerAttackRelease('E5', '8n', now + 0.3);
+          synth.triggerAttackRelease('G5', '4n', now + 0.45);
+        }
+      } catch (e) {
+        console.warn("Audio Context blocked.");
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      const btn = document.getElementById('sound-btn');
+      btn.style.opacity = soundEnabled ? '1' : '0.5';
+    }
+
+    function switchGame(gameKey) {
+      const games = ['wordle', 'pokedex', 'tcg', 'enigma'];
+      games.forEach(g => {
+        const sec = document.getElementById(`game-${g}`);
+        const tab = document.getElementById(`tab-${g}`);
+        if (g === gameKey) {
+          sec.classList.remove('hidden');
+          tab.classList.add('active-tab');
+          tab.classList.remove('text-slate-700', 'hover:bg-slate-100');
+        } else {
+          sec.classList.add('hidden');
+          tab.classList.remove('active-tab');
+          tab.classList.add('text-slate-700', 'hover:bg-slate-100');
+        }
+      });
+    }
+
+    let wordleTarget = null;
+    let wordleAttempts = 0;
+    let wordleWins = 0;
+    const maxWordleAttempts = 7;
+
+    function initWordle() {
+      wordleTarget = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      wordleAttempts = 0;
+      document.getElementById('wordle-attempts').innerText = `0/${maxWordleAttempts}`;
+      document.getElementById('wordle-guesses-container').innerHTML = '';
+      document.getElementById('wordle-input').value = '';
+      
+      const suggestions = document.getElementById('wordle-suggestions');
+      if (suggestions) suggestions.classList.add('hidden');
+    }
+
+    const wordleInput = document.getElementById('wordle-input');
+    const suggestionsList = document.getElementById('wordle-suggestions');
+
+    wordleInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        suggestionsList.classList.add('hidden');
+        submitWordleGuess();
+      }
+    });
+
+    wordleInput.addEventListener('input', (e) => {
+      const val = e.target.value.trim().toLowerCase();
+      suggestionsList.innerHTML = '';
+
+      if (!val) {
+        suggestionsList.classList.add('hidden');
+        return;
+      }
+
+      // Filtra os pokémons que começam com o texto digitado
+      const matches = POKEMON_DB.filter(p => p.name.toLowerCase().startsWith(val));
+
+      if (matches.length > 0) {
+        matches.forEach(match => {
+          const li = document.createElement('li');
+          li.className = 'px-4 py-2 hover:bg-slate-200 cursor-pointer uppercase border-b-2 border-slate-100 last:border-b-0 flex items-center gap-3 transition-colors text-slate-800';
+          
+          const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${match.id}.png`;
+          li.innerHTML = `
+            <img src="${spriteUrl}" class="w-8 h-8 object-contain rendering-pixelated" alt="${match.name}">
+            <span>${match.name}</span>
+            <span class="text-[10px] text-slate-400 ml-auto bg-slate-100 px-2 border border-slate-300 rounded shadow-sm">#${match.id}</span>
+          `;
+          
+          li.onmousedown = (ev) => {
+            // Evita que o campo de input perca o foco antes de registrar o clique
+            ev.preventDefault();
+            wordleInput.value = match.name.toUpperCase();
+            suggestionsList.classList.add('hidden');
+          };
+          
+          suggestionsList.appendChild(li);
+        });
+        suggestionsList.classList.remove('hidden');
+      } else {
+        suggestionsList.classList.add('hidden');
+      }
+    });
+
+    // Oculta a lista de sugestões ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (!wordleInput.contains(e.target) && !suggestionsList.contains(e.target)) {
+        suggestionsList.classList.add('hidden');
+      }
+    });
+
+    function submitWordleGuess() {
+      const input = document.getElementById('wordle-input');
+      const val = input.value.trim().toLowerCase();
+      if (!val) return;
+
+      const guess = POKEMON_DB.find(p => p.name.toLowerCase() === val);
+      if (!guess) {
+        playSound('wrong');
+        input.classList.add('border-red-500', 'bg-red-50');
+        setTimeout(() => input.classList.remove('border-red-500', 'bg-red-50'), 300);
+        return;
+      }
+
+      input.value = '';
+      wordleAttempts++;
+      document.getElementById('wordle-attempts').innerText = `${wordleAttempts}/${maxWordleAttempts}`;
+
+      renderWordleRow(guess);
+
+      if (guess.id === wordleTarget.id) {
+        playSound('win');
+        wordleWins++;
+        document.getElementById('wordle-wins').innerText = wordleWins;
+        setTimeout(() => alert(`PARABÉNS! O POKÉMON ERA ${wordleTarget.name.toUpperCase()}!`), 300);
+        setTimeout(initWordle, 1500);
+      } else if (wordleAttempts >= maxWordleAttempts) {
+        playSound('wrong');
+        setTimeout(() => alert(`FIM DE JOGO! O POKÉMON ERA ${wordleTarget.name.toUpperCase()}`), 300);
+        setTimeout(initWordle, 1500);
+      } else {
+        playSound('wrong');
+      }
+    }
+
+    function renderWordleRow(guess) {
+      const container = document.getElementById('wordle-guesses-container');
+      const row = document.createElement('div');
+      
+      // Retro styled row
+      row.className = 'grid grid-cols-6 gap-1 p-2 bg-white border-4 border-slate-800 items-center text-center text-[9px] font-bold animate-pop shadow-[2px_2px_0_rgba(0,0,0,0.2)] mb-2';
+
+      const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${guess.id}.png`;
+
+      const t1Match = guess.type1 === wordleTarget.type1;
+      const t2Match = guess.type2 === wordleTarget.type2;
+      const genMatch = guess.gen === wordleTarget.gen;
+      const genArrow = guess.gen < wordleTarget.gen ? '▲' : (guess.gen > wordleTarget.gen ? '▼' : '');
+
+      const idMatch = guess.id === wordleTarget.id;
+      const idArrow = guess.id < wordleTarget.id ? '▲' : (guess.id > wordleTarget.id ? '▼' : '');
+
+      const getBg = (match) => match ? 'bg-green-100 border-2 border-green-500 text-green-800' : 'bg-red-50 border-2 border-red-300 text-red-800';
+
+      row.innerHTML = `
+        <div class="flex flex-col items-center justify-center p-1 bg-slate-100 border-2 border-slate-300">
+          <img src="${spriteUrl}" alt="${guess.name}" class="w-10 h-10 object-contain rendering-pixelated pixel-shadow"/>
+          <span class="uppercase truncate max-w-full">${guess.name}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full ${getBg(t1Match)}">
+          <span class="px-1 py-1 rounded-sm type-${guess.type1} text-[8px] border border-black">${guess.type1}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full ${getBg(t2Match)}">
+          <span class="px-1 py-1 rounded-sm ${guess.type2 !== 'none' ? 'type-' + guess.type2 : 'bg-slate-300 text-slate-500'} text-[8px] border border-black">${guess.type2}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full flex-col ${getBg(genMatch)}">
+          <span>G${guess.gen}</span><span class="text-xs">${genArrow}</span>
+        </div>
+        <div class="p-1 flex items-center justify-center h-full flex-col ${getBg(idMatch)}">
+          <span>#${guess.id}</span><span class="text-xs">${idArrow}</span>
+        </div>
+        <div class="p-1 flex flex-col justify-center h-full bg-slate-100 border-2 border-slate-300 font-vt text-sm">
+          <span>${guess.height}m</span>
+          <span>${guess.weight}kg</span>
+        </div>
+      `;
+      container.prepend(row);
+    }
+
+    let pokedexP1 = null;
+    let pokedexP2 = null;
+    let pokedexStreak = 0;
+
+    function initPokedexGame() {
+      pokedexP1 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      do {
+        pokedexP2 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      } while (pokedexP2.id === pokedexP1.id);
+
+      document.getElementById('pokedex-p1-img').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexP1.id}.png`;
+      document.getElementById('pokedex-p1-name').innerText = pokedexP1.name;
+      document.getElementById('pokedex-p1-num').innerText = pokedexP1.id;
+
+      const p2Img = document.getElementById('pokedex-p2-img');
+      p2Img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokedexP2.id}.png`;
+      p2Img.style.filter = "brightness(0) opacity(0.8)";
+      
+      document.getElementById('pokedex-p2-name').innerText = "?????";
+      const numBox = document.getElementById('pokedex-p2-num');
+      numBox.innerText = "???";
+      numBox.classList.add('animate-blink');
+
+      document.getElementById('pokedex-btns').classList.remove('hidden');
+    }
+
+    function guessPokedex(choice) {
+      document.getElementById('pokedex-p2-name').innerText = pokedexP2.name;
+      document.getElementById('pokedex-p2-img').style.filter = "none";
+      
+      const numBox = document.getElementById('pokedex-p2-num');
+      numBox.innerText = pokedexP2.id;
+      numBox.classList.remove('animate-blink');
+
+      const isHigher = pokedexP2.id > pokedexP1.id;
+      const correct = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
+
+      if (correct) {
+        playSound('correct');
+        pokedexStreak++;
+        document.getElementById('pokedex-streak').innerText = pokedexStreak;
+        setTimeout(initPokedexGame, 1500);
+      } else {
+        playSound('wrong');
+        setTimeout(() => {
+          alert(`ERRADO! ${pokedexP2.name.toUpperCase()} É #${pokedexP2.id}. STREAK: ${pokedexStreak}`);
+          pokedexStreak = 0;
+          document.getElementById('pokedex-streak').innerText = 0;
+          initPokedexGame();
+        }, 500);
+      }
+    }
+
+    let tcgC1 = null;
+    let tcgC2 = null;
+    let tcgStreak = 0;
+
+    function initTCGGame() {
+      tcgC1 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      do {
+        tcgC2 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      } while (tcgC2.id === tcgC1.id);
+
+      document.getElementById('tcg-c1-img').src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${tcgC1.id}.png`;
+      document.getElementById('tcg-c1-name').innerText = tcgC1.name;
+      document.getElementById('tcg-c1-price').innerText = tcgC1.tcgPrice.toFixed(2);
+
+      const c2Img = document.getElementById('tcg-c2-img');
+      c2Img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${tcgC2.id}.png`;
+      c2Img.style.filter = "brightness(0) opacity(0.5)";
+
+      document.getElementById('tcg-c2-name').innerText = "?????";
+      const priceBox = document.getElementById('tcg-c2-price');
+      priceBox.innerText = "???";
+      
+      document.getElementById('tcg-c2-price-box').classList.add('animate-blink');
+      document.getElementById('tcg-btns').classList.remove('hidden');
+    }
+
+    function guessTCG(choice) {
+      document.getElementById('tcg-c2-name').innerText = tcgC2.name;
+      document.getElementById('tcg-c2-img').style.filter = "none";
+      
+      const priceBox = document.getElementById('tcg-c2-price');
+      priceBox.innerText = tcgC2.tcgPrice.toFixed(2);
+      document.getElementById('tcg-c2-price-box').classList.remove('animate-blink');
+
+      const isHigher = tcgC2.tcgPrice > tcgC1.tcgPrice;
+      const correct = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
+
+      if (correct) {
+        playSound('correct');
+        tcgStreak++;
+        document.getElementById('tcg-streak').innerText = tcgStreak;
+        setTimeout(initTCGGame, 1500);
+      } else {
+        playSound('wrong');
+        setTimeout(() => {
+          alert(`ERRADO! A CARTA VALE $${tcgC2.tcgPrice.toFixed(2)}. VITÓRIAS: ${tcgStreak}`);
+          tcgStreak = 0;
+          document.getElementById('tcg-streak').innerText = 0;
+          initTCGGame();
+        }, 500);
+      }
+    }
+
+    let enigmaCurrent = null;
+
+    function nextEnigma() {
+      enigmaCurrent = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
+      document.getElementById('enigma-text').innerText = enigmaCurrent.riddle;
+      document.getElementById('enigma-clue-1').innerText = enigmaCurrent.clue1;
+      document.getElementById('enigma-clue-2').innerText = enigmaCurrent.clue2;
+      document.getElementById('enigma-input').value = '';
+      
+      const res = document.getElementById('enigma-result');
+      res.classList.add('hidden');
+    }
+
+    document.getElementById('enigma-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitEnigmaGuess();
+    });
+
+    function submitEnigmaGuess() {
+      const val = document.getElementById('enigma-input').value.trim().toLowerCase();
+      const res = document.getElementById('enigma-result');
+      if (!val) return;
+
+      if (val === enigmaCurrent.name.toLowerCase()) {
+        playSound('win');
+        res.className = "w-full max-w-md p-4 border-4 border-green-800 bg-green-100 text-center font-bold text-xs text-green-800 shadow-[4px_4px_0_rgba(0,0,0,0.2)] mt-4 animate-pop";
+        res.innerText = `CORRETO! É O ${enigmaCurrent.name.toUpperCase()}!`;
+        res.classList.remove('hidden');
+        setTimeout(nextEnigma, 2000);
+      } else {
+        playSound('wrong');
+        res.className = "w-full max-w-md p-4 border-4 border-red-800 bg-red-100 text-center font-bold text-xs text-red-800 shadow-[4px_4px_0_rgba(0,0,0,0.2)] mt-4 animate-pop";
+        res.innerText = `ERRADO! "${val.toUpperCase()}" NÃO É A RESPOSTA.`;
+        res.classList.remove('hidden');
+      }
+    }
+
+    // Initialize all on load
+    window.onload = function() {
+      initWordle();
+      initPokedexGame();
+      initTCGGame();
+      nextEnigma();
+    };
+  </script>
+</body>
+</html>
