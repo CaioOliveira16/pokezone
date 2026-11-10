@@ -98,21 +98,6 @@
     .pixel-shadow { filter: drop-shadow(4px 4px 0px rgba(0,0,0,0.2)); }
     
     input::placeholder { color: #9ca3af; font-family: 'VT323', monospace; font-size: 1.1rem; }
-
-    /* TCG Card Outer Structure */
-    .tcg-card-wrapper {
-      background: linear-gradient(135deg, #fce043 0%, #fb7ba2 100%);
-      border-radius: 12px;
-      padding: 6px;
-      box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
-      width: 100%;
-      height: 100%;
-    }
-    .tcg-art-frame {
-      border: 3px solid #d4af37;
-      box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
-      background: radial-gradient(circle, #e2e8f0 0%, #94a3b8 100%);
-    }
   </style>
 </head>
 <body class="flex flex-col min-h-screen overflow-x-hidden">
@@ -256,8 +241,8 @@
       </div>
     </section>
 
-    <!-- GAME: TCG -->
-    <section id="game-tcg" class="w-full max-w-3xl flex flex-col items-center hidden animate-pop">
+    <!-- GAME: TCG (SEÇÃO ATUALIZADA: CARTAS GRANDES E SEM QUADRO) -->
+    <section id="game-tcg" class="w-full max-w-4xl flex flex-col items-center hidden animate-pop">
       
       <div class="dialogue-box w-full p-4 mb-6 text-center">
         <h2 class="text-sm md:text-base text-blue-700 mb-2">Batalha de Cartas</h2>
@@ -269,29 +254,42 @@
         <span id="tcg-streak" class="text-sm text-green-700">0</span>
       </div>
 
-      <!-- Cards Grid -->
-      <div class="w-full flex flex-col md:flex-row justify-center gap-8 items-center">
+      <!-- Cards Display Area -->
+      <div class="w-full flex flex-col md:flex-row justify-center items-center gap-6 md:gap-12">
         
-        <!-- Card 1 Slot -->
-        <div class="w-64 flex flex-col items-center">
-          <div class="bg-black text-white w-full text-[8px] text-center font-bold py-1 mb-1 border-2 border-slate-800">CARTA 1</div>
-          <div id="tcg-c1-container" class="w-full h-96 flex items-center justify-center">
-            <!-- Dynamic card render -->
+        <!-- Carta 1 -->
+        <div class="flex flex-col items-center w-full max-w-[280px]">
+          <div class="bg-black text-white px-4 py-1 text-[10px] font-bold border-2 border-slate-800 rounded mb-2">CARTA 1</div>
+          <div class="w-full h-[390px] flex items-center justify-center">
+            <img id="tcg-c1-img" src="" alt="Carta 1" class="w-full h-full object-contain filter drop-shadow-xl transition-all duration-300">
+          </div>
+          <div class="mt-2 text-center w-full">
+            <h3 id="tcg-c1-name" class="text-xs uppercase font-bold text-slate-800 mb-1">--</h3>
+            <span id="tcg-c1-price-box" class="text-lg font-bold text-green-600 bg-white border-2 border-slate-800 px-3 py-1 rounded inline-block shadow-sm">
+              $<span id="tcg-c1-price">0.00</span>
+            </span>
           </div>
         </div>
 
-        <div class="text-xl font-bold md:-mx-4 z-10 text-slate-500">VS</div>
+        <div class="text-2xl font-extrabold text-slate-600 my-2 md:my-0">VS</div>
 
-        <!-- Card 2 Slot -->
-        <div class="w-64 flex flex-col items-center">
-          <div class="bg-blue-600 text-white w-full text-[8px] text-center font-bold py-1 mb-1 border-2 border-slate-800">CARTA 2</div>
-          <div id="tcg-c2-container" class="w-full h-96 flex items-center justify-center">
-            <!-- Dynamic card render -->
+        <!-- Carta 2 -->
+        <div class="flex flex-col items-center w-full max-w-[280px]">
+          <div class="bg-blue-600 text-white px-4 py-1 text-[10px] font-bold border-2 border-slate-800 rounded mb-2">CARTA 2</div>
+          <div class="w-full h-[390px] flex items-center justify-center">
+            <img id="tcg-c2-img" src="" alt="Carta 2" class="w-full h-full object-contain filter drop-shadow-xl transition-all duration-300">
           </div>
-          
-          <div id="tcg-btns" class="w-full mt-3 space-y-1">
-            <button onclick="guessTCG('higher')" class="btn-retro w-full bg-green-500 py-2 text-[10px] text-white">VALE MAIS</button>
-            <button onclick="guessTCG('lower')" class="btn-retro w-full bg-red-500 py-2 text-[10px] text-white">VALE MENOS</button>
+          <div class="mt-2 text-center w-full">
+            <h3 id="tcg-c2-name" class="text-xs uppercase font-bold text-slate-800 mb-1">--</h3>
+            <span id="tcg-c2-price-box" class="text-lg font-bold text-red-600 bg-white border-2 border-slate-800 px-3 py-1 rounded inline-block shadow-sm animate-blink">
+              $<span id="tcg-c2-price">???</span>
+            </span>
+          </div>
+
+          <!-- Botoes de Acao -->
+          <div id="tcg-btns" class="w-full mt-4 space-y-2">
+            <button onclick="guessTCG('higher')" class="btn-retro w-full bg-green-500 py-3 text-xs text-white border-green-800 shadow">VALE MAIS</button>
+            <button onclick="guessTCG('lower')" class="btn-retro w-full bg-red-500 py-3 text-xs text-white border-red-800 shadow">VALE MENOS</button>
           </div>
         </div>
 
@@ -332,7 +330,7 @@
   </main>
 
   <script>
-    // Database of 200 Pokémon
+    // Database de Pokémons
     const POKEMON_DB = [
       { id: 1, name: "bulbasaur", type1: "grass", type2: "poison", gen: 1, height: 0.7, weight: 6.9, tcgPrice: 15.50, riddle: "Levo uma semente nas minhas costas que cresce conforme o sol me ilumina.", clue1: "É o nº 1 da Pokédex nacional.", clue2: "Tipo Planta e Veneno." },
       { id: 2, name: "ivysaur", type1: "grass", type2: "poison", gen: 1, height: 1.0, weight: 13.0, tcgPrice: 8.00, riddle: "Quando o botão nas minhas costas cresce, perco a capacidade de me levantar nas patas traseiras.", clue1: "Evolução do Bulbasaur.", clue2: "Possui uma flor desabrochando." },
@@ -346,20 +344,8 @@
       { id: 10, name: "caterpie", type1: "bug", type2: "none", gen: 1, height: 0.3, weight: 2.9, tcgPrice: 2.00, riddle: "Libero um odor horrível através da antena vermelha em minha cabeça para afastar predadores.", clue1: "O primeiro Pokémon lagarta.", clue2: "Evolui no nível 7." },
       { id: 11, name: "metapod", type1: "bug", type2: "none", gen: 1, height: 0.7, weight: 9.9, tcgPrice: 1.50, riddle: "Minha casca endurecida protege meu corpo suave enquanto me preparo para evoluir.", clue1: "Conhecido pelo golpe Harden.", clue2: "Casulo verde." },
       { id: 12, name: "butterfree", type1: "bug", type2: "flying", gen: 1, height: 1.1, weight: 32.0, tcgPrice: 22.00, riddle: "Coleto néctar todos os dias e posso lançar poeiras tóxicas ou soníferas pelas asas.", clue1: "Borboleta da Gen 1.", clue2: "Primeira libertação marcante no anime." },
-      { id: 13, name: "weedle", type1: "bug", type2: "poison", gen: 1, height: 0.3, weight: 3.2, tcgPrice: 2.00, riddle: "Tenho um espinho afiado na cabeça que injeta veneno em quem pisar em mim.", clue1: "Lagarta da floresta de Viridian.", clue2: "Evolui para Kakuna." },
-      { id: 14, name: "kakuna", type1: "bug", type2: "poison", gen: 1, height: 0.6, weight: 10.0, tcgPrice: 1.50, riddle: "Fico quase imóvel preso às árvores enquanto meu corpo interno se transforma.", clue1: "Casulo amarelo.", clue2: "Evolui para Beedrill." },
-      { id: 15, name: "beedrill", type1: "bug", type2: "poison", gen: 1, height: 1.0, weight: 29.5, tcgPrice: 15.00, riddle: "Ataco em enxames usando os ferões grandes e afiados das minhas patas e cauda.", clue1: "Vespa venenosa.", clue2: "Tem uma Mega Evolução com 5 ferrões." },
-      { id: 16, name: "pidgey", type1: "normal", type2: "flying", gen: 1, height: 0.3, weight: 1.8, tcgPrice: 3.00, riddle: "Muito dócil, prefiro bater as asas na areia para criar tempestades de poeira e fugir.", clue1: "Passarinho comum das primeiras rotas.", clue2: "Evolui para Pidgeotto." },
-      { id: 17, name: "pidgeotto", type1: "normal", type2: "flying", gen: 1, height: 1.1, weight: 30.0, tcgPrice: 5.00, riddle: "Voo em círculos sobre meu território procurando presas como Exeggcute ou Magikarp.", clue1: "Evolução do Pidgey.", clue2: "Garras afiadas e plumagem exuberante." },
-      { id: 18, name: "pidgeot", type1: "normal", type2: "flying", gen: 1, height: 1.5, weight: 39.5, tcgPrice: 35.00, riddle: "Consigo voar na velocidade de Mach 2 e minhas penas brilhantes impressionam treinadores.", clue1: "Forma final da linha do Pidgey.", clue2: "Foi o fiel voador de Ash em Kanto." },
-      { id: 19, name: "rattata", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 3.5, tcgPrice: 2.00, riddle: "Meus dentes roem qualquer coisa e me reproduzo extremamente rápido em vilas.", clue1: "Rato roxo comum de Kanto.", clue2: "Tem forma regional em Alola." },
-      { id: 20, name: "raticate", type1: "normal", type2: "none", gen: 1, height: 0.7, weight: 18.5, tcgPrice: 6.00, riddle: "Uso meus bigodes para manter o equilíbrio e roigo madeira sólida e até prédios.", clue1: "Evolução do Rattata.", clue2: "Conhecido pelo golpe Hyper Fang." },
       { id: 25, name: "pikachu", type1: "electric", type2: "none", gen: 1, height: 0.4, weight: 6.0, tcgPrice: 120.00, riddle: "Guardo eletricidade nas minhas bochechas vermelhas para soltar raios potentes.", clue1: "O mascote oficial de toda a franquia.", clue2: "Evolui usando uma Pedra do Trovão." },
       { id: 26, name: "raichu", type1: "electric", type2: "none", gen: 1, height: 0.8, weight: 30.0, tcgPrice: 40.00, riddle: "Se acumular muita eletricidade, descarrego minha cauda em formato de raio no chão.", clue1: "Evolução direta do Pikachu.", clue2: "Derrotou Pikachu no ginásio do Lt. Surge." },
-      { id: 35, name: "clefairy", type1: "fairy", type2: "none", gen: 1, height: 0.6, weight: 7.5, tcgPrice: 15.00, riddle: "Dizem que vim do espaço. Danço em círculos sob a luz da lua cheia com meus companheiros.", clue1: "Originalmente planejada para ser a mascote.", clue2: "Evolui com Pedra da Lua." },
-      { id: 39, name: "jigglypuff", type1: "normal", type2: "fairy", gen: 1, height: 0.5, weight: 5.5, tcgPrice: 18.00, riddle: "Canto uma melodia relaxante que faz qualquer um dormir imediatamente, e fico brava se dormirem!", clue1: "Adora rabiscar rostos de quem dorme.", clue2: "Esfera rosa fofinha." },
-      { id: 52, name: "meowth", type1: "normal", type2: "none", gen: 1, height: 0.4, weight: 4.2, tcgPrice: 12.00, riddle: "Adoro objetos brilhantes e moedas reluzentes. Tenho uma moeda de ouro na minha testa.", clue1: "Gato falante famoso da Equipe Rocket.", clue2: "Aprende Pay Day." },
-      { id: 54, name: "psyduck", type1: "water", type2: "none", gen: 1, height: 0.8, weight: 19.6, tcgPrice: 16.00, riddle: "Sofro constantemente de dores de cabeça. Quando ela fica insuportável, liberto poderes psíquicos.", clue1: "Pato amarelo confuso do Misty.", clue2: "Apesar do poder psíquico, é tipo Água puro." },
       { id: 94, name: "gengar", type1: "ghost", type2: "poison", gen: 1, height: 1.5, weight: 40.5, tcgPrice: 85.00, riddle: "Escondo-me nas sombras à noite e adoro pregar peças assustadoras nos viajantes.", clue1: "Evolução do Haunter por troca.", clue2: "Sorriso largo e corpo roxo." },
       { id: 130, name: "gyarados", type1: "water", type2: "flying", gen: 1, height: 6.5, weight: 235.0, tcgPrice: 65.00, riddle: "Evoluo de um peixe inofensivo para uma serpente marinha cheia de fúria.", clue1: "Evolução do Magikarp no nível 20.", clue2: "Conhecido como o Pokémon Atrocidade." },
       { id: 133, name: "eevee", type1: "normal", type2: "none", gen: 1, height: 0.3, weight: 6.5, tcgPrice: 45.00, riddle: "Possuo um código genético instável que me permite evoluir em muitas formas diferentes.", clue1: "Possui o maior número de evoluções.", clue2: "Pokémon da categoria Evolução." },
@@ -624,54 +610,14 @@
       }
     }
 
-    /* TCG GAME - GARANTINDO ESTRUTURA DE CARTA COMPLETA EM TODAS AS SITUAÇÕES */
+    /* TCG GAME - CARREGANDO APENAS A CARTA TCG DIRETA E GRANDE SEM QUADRO */
     let tcgC1 = null;
     let tcgC2 = null;
     let tcgStreak = 0;
 
-    // Função que cria a estrutura completa de uma Carta TCG
-    function buildCardHTML(pkmn, hidePrice = false, customImgUrl = null) {
-      const priceText = hidePrice ? '???' : `$${pkmn.tcgPrice.toFixed(2)}`;
-      const priceClass = hidePrice ? 'text-red-600 animate-blink' : 'text-green-600 font-bold';
-      const imgSrc = customImgUrl || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pkmn.id}.png`;
-
-      return `
-        <div class="tcg-card-wrapper border-4 border-slate-800">
-          <div class="bg-slate-900 border-2 border-slate-800 rounded-lg p-2 h-full flex flex-col justify-between text-white">
-            
-            <!-- Card Header: Name + HP + Type -->
-            <div class="flex justify-between items-center mb-1 pb-1 border-b border-slate-700">
-              <span class="font-bold text-[10px] uppercase truncate text-yellow-400">${pkmn.name}</span>
-              <div class="flex items-center gap-1">
-                <span class="text-[8px] text-red-400 font-bold">HP</span>
-                <span class="text-[10px] font-bold text-red-500">${pkmn.height * 100 + 40}</span>
-                <span class="text-[8px] px-1 rounded uppercase type-${pkmn.type1} border border-black">${pkmn.type1}</span>
-              </div>
-            </div>
-
-            <!-- Card Art Frame -->
-            <div class="tcg-art-frame rounded overflow-hidden p-1 flex justify-center items-center my-1 h-36">
-              <img src="${imgSrc}" alt="${pkmn.name}" class="h-full object-contain filter drop-shadow">
-            </div>
-
-            <!-- Card Stats & Attack Box -->
-            <div class="bg-slate-800 rounded p-1.5 text-[8px] space-y-1 border border-slate-700 my-1">
-              <div class="flex justify-between items-center">
-                <span class="font-bold text-yellow-400 uppercase">💥 Atacante G${pkmn.gen}</span>
-                <span class="font-bold text-white">${pkmn.weight.toFixed(0)} DMG</span>
-              </div>
-              <p class="text-[7px] text-slate-400 italic leading-tight truncate">Pokédex #${pkmn.id} • ${pkmn.type1.toUpperCase()}</p>
-            </div>
-
-            <!-- Card Price & Value Footer -->
-            <div class="bg-white border-2 border-slate-800 rounded p-1 text-center mt-1">
-              <span class="text-[8px] text-slate-500 block uppercase font-bold">VALOR NO MERCADO</span>
-              <span class="text-xs ${priceClass}">${priceText}</span>
-            </div>
-
-          </div>
-        </div>
-      `;
+    // Imagem da carta padrão de fallback caso a API falhe
+    function getFallbackCardUrl(pkmnId) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pkmnId}.png`;
     }
 
     async function initTCGGame() {
@@ -680,18 +626,26 @@
         tcgC2 = POKEMON_DB[Math.floor(Math.random() * POKEMON_DB.length)];
       } while (tcgC2.id === tcgC1.id);
 
-      // Render inicial das cartas completas
-      document.getElementById('tcg-c1-container').innerHTML = buildCardHTML(tcgC1, false);
-      document.getElementById('tcg-c2-container').innerHTML = buildCardHTML(tcgC2, true);
-
+      // Define os dados dos nomes e preços
+      document.getElementById('tcg-c1-name').innerText = tcgC1.name;
+      document.getElementById('tcg-c1-price').innerText = tcgC1.tcgPrice.toFixed(2);
+      
+      document.getElementById('tcg-c2-name').innerText = tcgC2.name;
+      document.getElementById('tcg-c2-price').innerText = "???";
+      document.getElementById('tcg-c2-price-box').classList.add('animate-blink');
+      
       document.getElementById('tcg-btns').classList.remove('hidden');
 
-      // Tenta buscar as imagens oficiais de cartas do TCG Pokemontcg API
+      // Define imagens iniciais
+      document.getElementById('tcg-c1-img').src = getFallbackCardUrl(tcgC1.id);
+      document.getElementById('tcg-c2-img').src = getFallbackCardUrl(tcgC2.id);
+
+      // Tenta buscar imagem oficial da Carta TCG pela API Pokemontcg
       try {
         const res1 = await fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${tcgC1.id} supertype:Pokémon&pageSize=1`);
         const data1 = await res1.json();
         if (data1.data && data1.data.length > 0) {
-          document.getElementById('tcg-c1-container').innerHTML = buildCardHTML(tcgC1, false, data1.data[0].images.small);
+          document.getElementById('tcg-c1-img').src = data1.data[0].images.large || data1.data[0].images.small;
         }
       } catch (e) {}
 
@@ -699,16 +653,14 @@
         const res2 = await fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${tcgC2.id} supertype:Pokémon&pageSize=1`);
         const data2 = await res2.json();
         if (data2.data && data2.data.length > 0) {
-          // Atualiza com a imagem oficial da API TCG mantendo o valor oculto
-          document.getElementById('tcg-c2-container').innerHTML = buildCardHTML(tcgC2, true, data2.data[0].images.small);
+          document.getElementById('tcg-c2-img').src = data2.data[0].images.large || data2.data[0].images.small;
         }
       } catch (e) {}
     }
 
     function guessTCG(choice) {
-      // Revela o valor da Carta 2 na carta completa
-      const c2Img = document.querySelector('#tcg-c2-container img')?.src;
-      document.getElementById('tcg-c2-container').innerHTML = buildCardHTML(tcgC2, false, c2Img);
+      document.getElementById('tcg-c2-price').innerText = tcgC2.tcgPrice.toFixed(2);
+      document.getElementById('tcg-c2-price-box').classList.remove('animate-blink');
 
       const isHigher = tcgC2.tcgPrice > tcgC1.tcgPrice;
       const correct = (choice === 'higher' && isHigher) || (choice === 'lower' && !isHigher);
